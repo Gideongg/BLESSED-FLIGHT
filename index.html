@@ -5,100 +5,46 @@
   <title>Blessed Flight</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
-    :root{
-      --accent: yellow;
-      --shadow: rgba(255,255,0,0.6);
-    }
-    *{ box-sizing:border-box; }
-    body{
-      margin:0; padding:0; display:flex; justify-content:center; align-items:center;
-      height:100vh; background:black; font-family: 'Fredoka One', system-ui, -apple-system, sans-serif;
-      touch-action:none; /* evita scroll durante el juego */
-    }
-    #gameContainer{
-      position:relative; width:400px; height:700px; overflow:hidden;
-      border:4px solid var(--accent); border-radius:20px; box-shadow:0 0 20px var(--accent);
-      background:#87ceeb;
-      -webkit-tap-highlight-color: transparent;
-    }
+    body{ margin:0; padding:0; display:flex; justify-content:center; align-items:center; height:100vh; background:black; font-family:'Fredoka One',system-ui,sans-serif; touch-action:none; }
+    #gameContainer{ position:relative; width:400px; height:700px; overflow:hidden; border:4px solid yellow; border-radius:20px; box-shadow:0 0 20px yellow; background:#87ceeb; }
     canvas{ display:block; }
-    #menu{
-      position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-      padding-bottom:50px; z-index:3;
-      background:url("PRINCIPAL (2).png") no-repeat center center / cover;
-    }
-    .btn{
-      font-size:2em; color:var(--accent); background:black; border:4px solid var(--accent);
-      padding:12px 28px; border-radius:20px; cursor:pointer; text-shadow:3px 3px 0 #000; margin-top:20px;
-      box-shadow:0 0 15px var(--accent);
-    }
+    #menu{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end; padding:0 20px 60px 20px; z-index:3; background:url("PRINCIPAL (2).png") no-repeat center/cover; }
+    .btn{ font-size:2em; color:yellow; background:black; border:4px solid yellow; padding:12px 28px; border-radius:20px; cursor:pointer; text-shadow:3px 3px 0 #000; margin-top:20px; box-shadow:0 0 15px yellow; transition: transform 0.2s ease; }
     .btn:hover{ transform:scale(1.06); }
-    .best{ color:white; font-size:1.1em; text-shadow:2px 2px 0 #000; margin-top:10px; }
-    #gameOverScreen{
-      position:absolute; inset:0; background:rgba(0,0,0,0.9); z-index:4;
-      display:none; flex-direction:column; align-items:center; justify-content:center;
-    }
-    #gameOverScreen img{ width:200px; margin-bottom:18px; }
-    #gameOverScreen h1{ font-size:2.5em; color:#ff3b3b; margin:0 0 8px; text-shadow:2px 2px 0 #000; }
-    #finalScore{ color:white; font-size:1.4em; margin-bottom:18px; }
-
-    /* --- Controles táctiles estilo "cruz" --- */
-    #touchControls{
-      position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
-      width:200px; height:200px; z-index:5; opacity:.45; /* semi-transparente */
-      display:flex; align-items:center; justify-content:center;
-      pointer-events:none; /* los hijos reciben los eventos */
-    }
-    .pad{
-      position:relative; width:100%; height:100%;
-    }
-    .btn-pad{
-      position:absolute; pointer-events:auto; border:none; outline:none; background:rgba(0,0,0,.15);
-      backdrop-filter: blur(2px);
-      border-radius:18px; box-shadow:0 0 0 2px rgba(255,255,255,.15) inset;
-      touch-action:none; /* importante para que no se arrastre la página */
-    }
-    /* brazos de la cruz */
-    .btn-pad.up{    left:50%; top:0;    transform:translateX(-50%); width:68px; height:80px; border-bottom-left-radius:12px; border-bottom-right-radius:12px; }
-    .btn-pad.down{  left:50%; bottom:0; transform:translateX(-50%); width:68px; height:80px; border-top-left-radius:12px; border-top-right-radius:12px; }
-    .btn-pad.left{  left:0; top:50%;   transform:translateY(-50%); width:80px; height:68px; border-top-right-radius:12px; border-bottom-right-radius:12px; }
-    .btn-pad.right{ right:0; top:50%;  transform:translateY(-50%); width:80px; height:68px; border-top-left-radius:12px; border-bottom-left-radius:12px; }
-
-    /* indicador visual al presionar */
-    .btn-pad:active, .btn-pad[data-active="true"]{ background:rgba(255,255,255,.22); box-shadow:0 0 0 2px rgba(255,255,0,.45) inset; }
-
-    /* Ocultar controles en pantallas grandes con mouse */
-    @media (hover:hover) and (pointer:fine){
-      #touchControls{ display:none; }
-    }
+    .best{ color:white; font-size:1.1em; text-shadow:2px 2px 0 #000; margin-top:10px; align-self:center; }
+    #gameOverScreen{ position:absolute; inset:0; background:rgba(0,0,0,0.92); z-index:4; display:none; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+    #gameOverScreen img{ width:200px; margin-bottom:18px; filter:drop-shadow(0 0 15px red); }
+    #gameOverScreen h1{ font-size:2.5em; color:#ff3b3b; margin:0 0 8px; text-shadow:3px 3px 8px #000; letter-spacing:2px; }
+    #finalScore{ color:white; font-size:1.4em; margin-bottom:18px; text-shadow:2px 2px 5px #000; }
+    #touchControls{ position:absolute; left:50%; bottom:10px; transform:translateX(-50%); width:200px; height:200px; z-index:5; opacity:.45; display:none; align-items:center; justify-content:center; pointer-events:none; }
+    .pad{ position:relative; width:100%; height:100%; }
+    .btn-pad{ position:absolute; pointer-events:auto; border:none; background:rgba(0,0,0,.15); border-radius:18px; touch-action:none; }
+    .btn-pad.up{left:50%;top:0;transform:translateX(-50%);width:68px;height:80px;}
+    .btn-pad.down{left:50%;bottom:0;transform:translateX(-50%);width:68px;height:80px;}
+    .btn-pad.left{left:0;top:50%;transform:translateY(-50%);width:80px;height:68px;}
+    .btn-pad.right{right:0;top:50%;transform:translateY(-50%);width:80px;height:68px;}
+    .btn-pad[data-active="true"]{ background:rgba(255,255,255,.22); }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="gameContainer">
     <div id="menu">
       <button id="playBtn" class="btn">PLAY</button>
       <div class="best">Best Score: <span id="bestScore">0</span></div>
-      <div class="best">(You can also start with the SPACE bar)</div>
     </div>
-
     <div id="gameOverScreen">
-      <img src="demonio.png" alt="Cursed Demon" />
+      <img src="demonio.png" alt="Demonio sombrío" />
       <h1>CURSED</h1>
       <div id="finalScore">Score: 0</div>
-      <button id="againBtn" class="btn">Fly Again</button>
-      <div class="best">(Press SPACE to restart)</div>
+      <button id="againBtn" class="btn">FLIGHT AGAIN</button>
     </div>
-
     <canvas id="gameCanvas" width="400" height="700"></canvas>
-
-    <!-- Controles táctiles -->
-    <div id="touchControls" aria-label="Controles táctiles">
+    <div id="touchControls">
       <div class="pad">
-        <button class="btn-pad up"    data-dir="up"    aria-label="Arriba"></button>
-        <button class="btn-pad left"  data-dir="left"  aria-label="Izquierda"></button>
-        <button class="btn-pad right" data-dir="right" aria-label="Derecha"></button>
-        <button class="btn-pad down"  data-dir="down"  aria-label="Abajo"></button>
+        <button class="btn-pad up" data-dir="up"></button>
+        <button class="btn-pad left" data-dir="left"></button>
+        <button class="btn-pad right" data-dir="right"></button>
+        <button class="btn-pad down" data-dir="down"></button>
       </div>
     </div>
   </div>
@@ -108,280 +54,92 @@
 
   <script>
   (()=>{
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const menu = document.getElementById("menu");
-    const playBtn = document.getElementById("playBtn");
-    const gameOverScreen = document.getElementById("gameOverScreen");
-    const againBtn = document.getElementById("againBtn");
-    const bestScoreDisplay = document.getElementById("bestScore");
-    const finalScoreDisplay = document.getElementById("finalScore");
-    const bgMusic = document.getElementById("bgMusic");
+    const canvas=document.getElementById("gameCanvas");
+    const ctx=canvas.getContext("2d");
+    const menu=document.getElementById("menu");
+    const playBtn=document.getElementById("playBtn");
+    const gameOverScreen=document.getElementById("gameOverScreen");
+    const againBtn=document.getElementById("againBtn");
+    const bestScoreDisplay=document.getElementById("bestScore");
+    const finalScoreDisplay=document.getElementById("finalScore");
+    const touchControls=document.getElementById("touchControls");
+    const bgMusic=document.getElementById("bgMusic");
 
-    let player, clouds, stars;
-    let score = 0;
-    let running = false, gameOver = false;
-    let speedFactor = 1.5;
-    let lastFrame = 0;
-    let spawnTimer = 0, spawnEvery = 1500; // ms
-    let scoreTimer = 0; // ms
+    let player,clouds,stars; let score=0; let running=false,gameOver=false;
+    let speedFactor=1.5; let lastFrame=0; let spawnTimer=0; let spawnEvery=1500; let scoreTimer=0;
+    let falling=false,fallVelocity=0,rotation=0;
 
-    let falling = false, fallVelocity = 0, rotation = 0;
+    const milestones=[{at:20,label:"DEVOTED",color:"gray"},{at:40,label:"ENLIGHTENED",color:"orange"},{at:60,label:"BLESSED",color:"yellow"},{at:80,label:"MONK",color:"red"}];
+    let reached=new Set(); let milestoneMsg=null; let milestoneStart=0; let milestoneColor="yellow";
 
-    const milestones = [
-      {at:20, label:"DEVOTED", color:"gray", speed:2.0, minSpawn:600},
-      {at:40, label:"ENLIGHTENED", color:"orange", speed:3.0, minSpawn:500},
-      {at:60, label:"BLESSED", color:"yellow", speed:4.0, minSpawn:350},
-      {at:80, label:"MONK", color:"yellow", speed:5.5, stroke:"orange", minSpawn:250}
-    ];
-    let reached = new Set();
-    let milestoneMsg = null, milestoneColor = "yellow", milestoneStroke = null, milestoneStart = 0;
-    let zoomEffect = 0;
-    let currentMinSpawn = 450;
+    const playerImg=new Image(); playerImg.src="gato.png";
+    const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(src=>{let i=new Image(); i.src=src; return i;});
 
-    const playerImg = new Image(); playerImg.src = "gato.png";
-    const cloudSources = ["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"];
-    const cloudImgs = cloudSources.map(src => { const i = new Image(); i.src = src; return i; });
+    function resetPlayer(){rotation=0;return{x:canvas.width/2-40,y:canvas.height-120,w:80,h:80,speed:4.2};}
 
-    function resetPlayer(){ return { x: canvas.width/2 - 40, y: canvas.height - 120, w: 80, h: 80, speed: 4.2 }; }
     function newCloud(){
-      const img = cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
-      const size = 70 + Math.random()*50;
-      const base = 1.2;
-      return { x: Math.random()*(canvas.width-size), y: -size, w:size, h:size, speed: base + speedFactor*0.9, img };
-    }
-    function buildStars(){
-      stars = [];
-      for(let i=0;i<120;i++){
-        stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*2,
-                     color: Math.random()>0.5 ? "yellow":"black", speed:0.2 + Math.random()*0.8 });
-      }
-    }
-    function drawStars(){
-      for(const s of stars){
-        s.y += s.speed;
-        if(s.y > canvas.height){ s.y = 0; s.x = Math.random()*canvas.width; }
-        ctx.fillStyle = s.color;
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
-      }
-    }
-    function rectsOverlap(a,b){
-      return !(a.x + a.w < b.x || a.x > b.x + b.w || a.y + a.h < b.y || a.y > b.y + b.h);
-    }
-    function playerCollisionRect(){
-      const zoom = 1 + Math.max(0, zoomEffect)*0.35;
-      const w = player.w * zoom;
-      const h = player.h * zoom;
-      const cx = player.x + player.w/2;
-      const cy = player.y + player.h/2 - player.h*0.12;
-      return { x: cx - w/2, y: cy - h/2, w, h };
+      const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
+      const size=70+Math.random()*50;
+      let x;
+      do{x=Math.random()*(canvas.width-size);}while(x<80 && x+size>canvas.width-80);
+      return {x,y:-size,w:size,h:size,speed:1+speedFactor,img};
     }
 
-    function startGame(){
-      player = resetPlayer();
-      clouds = [];
-      buildStars();
-      score = 0; scoreTimer = 0;
-      speedFactor = 1.5;
-      reached.clear();
-      milestoneMsg = null; milestoneStart = 0; zoomEffect = 0;
-      running = true; gameOver = false; falling = false; rotation = 0; fallVelocity = 0;
-      spawnTimer = 0; lastFrame = performance.now();
-      currentMinSpawn = 450;
-      menu.style.display = "none";
-      gameOverScreen.style.display = "none";
-      try { bgMusic.currentTime = 0; bgMusic.play(); } catch(e){}
-      requestAnimationFrame(loop);
-    }
-    function startFall(){
-      if(falling || gameOver) return;
-      falling = true;
-      fallVelocity = -8;
-      rotation = 0;
-    }
-    function endGame(){
-      running = false; gameOver = true;
-      let best = parseInt(localStorage.getItem("bestScore")||"0",10);
-      if(score > best){
-        localStorage.setItem("bestScore", Math.floor(score));
-        best = score;
-      }
-      bestScoreDisplay.textContent = best;
-      finalScoreDisplay.textContent = "Score: " + Math.floor(score);
-      gameOverScreen.style.display = "flex";
-      try { bgMusic.pause(); } catch(e){}
-    }
-    function drawPlayer(){
-      const zoom = 1 + Math.max(0, zoomEffect)*0.35;
-      const cx = player.x + player.w/2;
-      const cy = player.y + player.h/2 - player.h*0.12;
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(rotation);
-      ctx.drawImage(playerImg, -player.w/2*zoom, -player.h/2*zoom, player.w*zoom, player.h*zoom);
-      ctx.restore();
-    }
-    function maybeMilestone(){
-      for(const m of milestones){
-        if(score >= m.at && !reached.has(m.at)){
-          reached.add(m.at);
-          speedFactor = m.speed;
-          milestoneMsg = m.label;
-          milestoneColor = m.color;
-          milestoneStroke = m.stroke || null;
-          milestoneStart = performance.now();
-          zoomEffect = 1;
-          currentMinSpawn = m.minSpawn || 450;
-          break;
-        }
-      }
-    }
-    function drawMilestone(nowMs){
-      if(!milestoneMsg) return;
-      const elapsed = nowMs - milestoneStart;
-      if(elapsed > 1500){ milestoneMsg = null; zoomEffect = 0; return; }
-      ctx.save();
-      ctx.textAlign = "center";
-      ctx.font = "40px Fredoka One";
-      if(milestoneStroke){ ctx.lineWidth = 4; ctx.strokeStyle = milestoneStroke; ctx.strokeText(milestoneMsg, canvas.width/2, canvas.height/2); }
-      ctx.fillStyle = milestoneColor;
-      ctx.fillText(milestoneMsg, canvas.width/2, canvas.height/2);
-      ctx.restore();
-      zoomEffect = Math.max(0, 1 - elapsed/1500);
-    }
+    function buildStars(){stars=[]; for(let i=0;i<120;i++){stars.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*2,color:Math.random()>0.5?"yellow":"black",speed:0.2+Math.random()*0.8});}}
+
+    function startGame(){player=resetPlayer(); clouds=[]; buildStars(); score=0; scoreTimer=0; speedFactor=1.5; reached.clear(); milestoneMsg=null; running=true; gameOver=false; falling=false; spawnTimer=0; lastFrame=performance.now(); menu.style.display="none"; gameOverScreen.style.display="none"; if(matchMedia('(pointer:coarse)').matches||'ontouchstart'in window){touchControls.style.display='flex';} try{bgMusic.currentTime=0; bgMusic.play();}catch(e){} requestAnimationFrame(loop);}
+
+    function endGame(){running=false; gameOver=true; touchControls.style.display='none'; let best=parseInt(localStorage.getItem("bestScore")||"0",10); if(score>best){localStorage.setItem("bestScore",Math.floor(score)); best=score;} bestScoreDisplay.textContent=best; finalScoreDisplay.textContent="Score: "+Math.floor(score); gameOverScreen.style.display="flex"; try{bgMusic.pause();}catch(e){}}
 
     const keys={};
-
-    // Entrada por teclado (desktop)
     window.addEventListener("keydown",e=>{
       if(e.code==="Space"){
+        if(menu.style.display!=="none"||gameOverScreen.style.display!=="none"){startGame();}
         e.preventDefault();
-        if(menu.style.display!=="none"||gameOverScreen.style.display!=="none"){ startGame(); }
         return;
       }
-      keys[e.key]=true;
+      keys[e.key.toLowerCase()]=true;
     });
-    window.addEventListener("keyup",e=>{ keys[e.key]=false; });
+    window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
 
-    // --- Controles táctiles / D-Pad ---
-    const touchRoot = document.getElementById('touchControls');
-    const padButtons = Array.from(touchRoot.querySelectorAll('.btn-pad'));
-
-    function setDir(dir, pressed){
-      // mapea a las mismas teclas que ya usa el juego
-      const map = { up:"ArrowUp", down:"ArrowDown", left:"ArrowLeft", right:"ArrowRight" };
-      const key = map[dir];
-      if(!key) return;
-      keys[key] = !!pressed;
-      // feedback visual
-      const btn = padButtons.find(b=>b.dataset.dir===dir);
-      if(btn){ btn.dataset.active = pressed ? 'true' : 'false'; }
+    const padButtons=Array.from(touchControls.querySelectorAll('.btn-pad'));
+    function setDir(dir,pressed){
+      const map={up:"arrowup",down:"arrowdown",left:"arrowleft",right:"arrowright"};
+      const key=map[dir]; if(!key)return;
+      keys[key]=!!pressed;
+      const btn=padButtons.find(b=>b.dataset.dir===dir);
+      if(btn){btn.dataset.active=pressed?'true':'false';}
     }
-
-    // soporta múltiples dedos: registramos por touch.identifier dónde está
-    const activeTouches = new Map(); // id -> dir
-
-    function getDirFromTarget(t){ return t && t.dataset ? t.dataset.dir : undefined; }
-
-    function onTouchStart(ev){
-      ev.preventDefault();
-      for(const touch of Array.from(ev.changedTouches)){
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        const dir = getDirFromTarget(target);
-        if(dir){ activeTouches.set(touch.identifier, dir); setDir(dir, true); }
-      }
-    }
-    function onTouchMove(ev){
-      ev.preventDefault();
-      for(const touch of Array.from(ev.changedTouches)){
-        const prev = activeTouches.get(touch.identifier);
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        const dir = getDirFromTarget(target);
-        if(dir !== prev){
-          if(prev) setDir(prev, false);
-          if(dir){ setDir(dir, true); activeTouches.set(touch.identifier, dir); } else { activeTouches.delete(touch.identifier); }
-        }
-      }
-    }
-    function onTouchEnd(ev){
-      ev.preventDefault();
-      for(const touch of Array.from(ev.changedTouches)){
-        const prev = activeTouches.get(touch.identifier);
-        if(prev){ setDir(prev, false); activeTouches.delete(touch.identifier); }
-      }
-    }
-
-    // activar listeners sólo en dispositivos táctiles para no interferir con mouse
-    const isTouchDevice = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
-    if(isTouchDevice){
-      touchRoot.addEventListener('touchstart', onTouchStart, {passive:false});
-      touchRoot.addEventListener('touchmove',  onTouchMove,  {passive:false});
-      touchRoot.addEventListener('touchend',   onTouchEnd,   {passive:false});
-      touchRoot.addEventListener('touchcancel',onTouchEnd,   {passive:false});
-    }
-
-    // También soporta mouse (útil en pruebas)
     padButtons.forEach(btn=>{
-      btn.addEventListener('pointerdown', e=>{ e.preventDefault(); setDir(btn.dataset.dir, true); });
-      btn.addEventListener('pointerup',   e=>{ e.preventDefault(); setDir(btn.dataset.dir, false); });
-      btn.addEventListener('pointerleave',e=>{ e.preventDefault(); setDir(btn.dataset.dir, false); });
+      btn.addEventListener('pointerdown',e=>{e.preventDefault();setDir(btn.dataset.dir,true);});
+      btn.addEventListener('pointerup',e=>{setDir(btn.dataset.dir,false);});
+      btn.addEventListener('pointerleave',e=>{setDir(btn.dataset.dir,false);});
     });
 
     playBtn.addEventListener("click",startGame);
     againBtn.addEventListener("click",startGame);
-    bestScoreDisplay.textContent = localStorage.getItem("bestScore")||"0";
+    bestScoreDisplay.textContent=localStorage.getItem("bestScore")||"0";
 
-    function loop(now){
-      if(!running) return;
-      const dt = Math.min(50, now - lastFrame);
-      lastFrame = now;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawStars();
+    function maybeMilestone(){for(const m of milestones){if(score>=m.at && !reached.has(m.at)){reached.add(m.at); milestoneMsg=m.label; milestoneColor=m.color; milestoneStart=performance.now();}}}
+
+    function drawMilestone(now){if(!milestoneMsg)return; const elapsed=now-milestoneStart; if(elapsed>1500){milestoneMsg=null; return;} ctx.save(); ctx.fillStyle=milestoneColor; ctx.font="40px Fredoka One"; ctx.textAlign="center"; ctx.fillText(milestoneMsg,canvas.width/2,canvas.height/2); ctx.restore();}
+
+    function loop(now){if(!running)return; const dt=Math.min(50,now-lastFrame); lastFrame=now; ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(const s of stars){s.y+=s.speed;if(s.y>canvas.height){s.y=0;s.x=Math.random()*canvas.width;}ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
       if(!falling){
-        if(keys["a"] || keys["ArrowLeft"])  player.x -= player.speed;
-        if(keys["d"] || keys["ArrowRight"]) player.x += player.speed;
-        if(keys["w"] || keys["ArrowUp"])    player.y -= player.speed;
-        if(keys["s"] || keys["ArrowDown"])  player.y += player.speed;
-        player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
-        player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
-      } else {
-        fallVelocity += 0.5;
-        player.y += fallVelocity;
-        rotation += 0.12;
-        if(player.y > canvas.height + 40){ endGame(); return; }
+        if(keys["a"]||keys["arrowleft"]) player.x-=player.speed;
+        if(keys["d"]||keys["arrowright"]) player.x+=player.speed;
+        if(keys["w"]||keys["arrowup"]) player.y-=player.speed;
+        if(keys["s"]||keys["arrowdown"]) player.y+=player.speed;
+        player.x=Math.max(0,Math.min(canvas.width-player.w,player.x));
+        player.y=Math.max(0,Math.min(canvas.height-player.h,player.y));
       }
-
-      spawnTimer += dt;
-      const currentSpawn = Math.max(currentMinSpawn, spawnEvery - speedFactor*200);
-      while(spawnTimer >= currentSpawn){
-        spawnTimer -= currentSpawn;
-        clouds.push(newCloud());
-      }
-
-      const pRect = playerCollisionRect();
-      for(let i=0;i<clouds.length;i++){
-        const c = clouds[i];
-        c.y += c.speed;
-        ctx.drawImage(c.img, c.x, c.y, c.w, c.h);
-        if(!falling && c.y > -c.h*0.6){
-          if(rectsOverlap(pRect,c)){ startFall(); }
-        }
-        if(c.y > canvas.height+60){ clouds.splice(i,1); i--; }
-      }
-
-      drawPlayer();
-
-      scoreTimer += dt;
-      if(!falling && scoreTimer >= 1000){
-        score += 1;
-        scoreTimer -= 1000;
-        maybeMilestone();
-      }
-
-      ctx.fillStyle="yellow"; ctx.font="20px Fredoka One"; ctx.fillText("Score: "+Math.floor(score),10,30);
-      drawMilestone(now);
-      requestAnimationFrame(loop);
-    }
+      else{fallVelocity+=0.5;player.y+=fallVelocity; rotation+=0.12; if(player.y>canvas.height+40){endGame();return;}}
+      spawnTimer+=dt; let currentSpawn=Math.max(800,spawnEvery-(score/20)*100); while(spawnTimer>=currentSpawn){spawnTimer-=currentSpawn; clouds.push(newCloud());}
+      const pRect={x:player.x,y:player.y,w:player.w,h:player.h}; for(let i=0;i<clouds.length;i++){const c=clouds[i]; c.y+=c.speed; ctx.drawImage(c.img,c.x,c.y,c.w,c.h); if(!falling){ if(!(pRect.x+pRect.w<c.x||pRect.x>c.x+c.w||pRect.y+pRect.h<c.y||pRect.y>c.y+c.h)){fallVelocity=-8;falling=true;rotation=0;} } if(c.y>canvas.height+60){clouds.splice(i,1);i--;}}
+      ctx.save();ctx.translate(player.x+player.w/2,player.y+player.h/2);ctx.rotate(rotation);ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
+      scoreTimer+=dt; if(!falling && scoreTimer>=1000){score+=1; scoreTimer-=1000; maybeMilestone();}
+      ctx.fillStyle="yellow"; ctx.font="20px Fredoka One"; ctx.fillText("Score: "+Math.floor(score),10,30); drawMilestone(now); requestAnimationFrame(loop);}
   })();
   </script>
 </body>
