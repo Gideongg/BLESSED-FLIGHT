@@ -1,22 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>Blessed Flight</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     :root{
       --accent: yellow;
       --shadow: rgba(255,255,0,0.6);
     }
+    *{ box-sizing:border-box; }
     body{
       margin:0; padding:0; display:flex; justify-content:center; align-items:center;
       height:100vh; background:black; font-family: 'Fredoka One', system-ui, -apple-system, sans-serif;
+      touch-action:none; /* evita scroll durante el juego */
     }
     #gameContainer{
       position:relative; width:400px; height:700px; overflow:hidden;
       border:4px solid var(--accent); border-radius:20px; box-shadow:0 0 20px var(--accent);
       background:#87ceeb;
+      -webkit-tap-highlight-color: transparent;
     }
     canvas{ display:block; }
     #menu{
@@ -38,6 +41,36 @@
     #gameOverScreen img{ width:200px; margin-bottom:18px; }
     #gameOverScreen h1{ font-size:2.5em; color:#ff3b3b; margin:0 0 8px; text-shadow:2px 2px 0 #000; }
     #finalScore{ color:white; font-size:1.4em; margin-bottom:18px; }
+
+    /* --- Controles táctiles estilo "cruz" --- */
+    #touchControls{
+      position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+      width:200px; height:200px; z-index:5; opacity:.45; /* semi-transparente */
+      display:flex; align-items:center; justify-content:center;
+      pointer-events:none; /* los hijos reciben los eventos */
+    }
+    .pad{
+      position:relative; width:100%; height:100%;
+    }
+    .btn-pad{
+      position:absolute; pointer-events:auto; border:none; outline:none; background:rgba(0,0,0,.15);
+      backdrop-filter: blur(2px);
+      border-radius:18px; box-shadow:0 0 0 2px rgba(255,255,255,.15) inset;
+      touch-action:none; /* importante para que no se arrastre la página */
+    }
+    /* brazos de la cruz */
+    .btn-pad.up{    left:50%; top:0;    transform:translateX(-50%); width:68px; height:80px; border-bottom-left-radius:12px; border-bottom-right-radius:12px; }
+    .btn-pad.down{  left:50%; bottom:0; transform:translateX(-50%); width:68px; height:80px; border-top-left-radius:12px; border-top-right-radius:12px; }
+    .btn-pad.left{  left:0; top:50%;   transform:translateY(-50%); width:80px; height:68px; border-top-right-radius:12px; border-bottom-right-radius:12px; }
+    .btn-pad.right{ right:0; top:50%;  transform:translateY(-50%); width:80px; height:68px; border-top-left-radius:12px; border-bottom-left-radius:12px; }
+
+    /* indicador visual al presionar */
+    .btn-pad:active, .btn-pad[data-active="true"]{ background:rgba(255,255,255,.22); box-shadow:0 0 0 2px rgba(255,255,0,.45) inset; }
+
+    /* Ocultar controles en pantallas grandes con mouse */
+    @media (hover:hover) and (pointer:fine){
+      #touchControls{ display:none; }
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
 </head>
@@ -58,9 +91,19 @@
     </div>
 
     <canvas id="gameCanvas" width="400" height="700"></canvas>
+
+    <!-- Controles táctiles -->
+    <div id="touchControls" aria-label="Controles táctiles">
+      <div class="pad">
+        <button class="btn-pad up"    data-dir="up"    aria-label="Arriba"></button>
+        <button class="btn-pad left"  data-dir="left"  aria-label="Izquierda"></button>
+        <button class="btn-pad right" data-dir="right" aria-label="Derecha"></button>
+        <button class="btn-pad down"  data-dir="down"  aria-label="Abajo"></button>
+      </div>
+    </div>
   </div>
 
-  <!-- Background Music -->
+  <!-- Música de fondo -->
   <audio id="bgMusic" src="musica_fondo.mp3" loop></audio>
 
   <script>
@@ -100,7 +143,7 @@
     const cloudSources = ["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"];
     const cloudImgs = cloudSources.map(src => { const i = new Image(); i.src = src; return i; });
 
-    function resetPlayer(){ return { x: canvas.width/2 - 40, y: canvas.height - 120, w: 80, h: 80, speed: 4 }; }
+    function resetPlayer(){ return { x: canvas.width/2 - 40, y: canvas.height - 120, w: 80, h: 80, speed: 4.2 }; }
     function newCloud(){
       const img = cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
       const size = 70 + Math.random()*50;
@@ -133,6 +176,7 @@
       const cy = player.y + player.h/2 - player.h*0.12;
       return { x: cx - w/2, y: cy - h/2, w, h };
     }
+
     function startGame(){
       player = resetPlayer();
       clouds = [];
@@ -205,6 +249,88 @@
       ctx.restore();
       zoomEffect = Math.max(0, 1 - elapsed/1500);
     }
+
+    const keys={};
+
+    // Entrada por teclado (desktop)
+    window.addEventListener("keydown",e=>{
+      if(e.code==="Space"){
+        e.preventDefault();
+        if(menu.style.display!=="none"||gameOverScreen.style.display!=="none"){ startGame(); }
+        return;
+      }
+      keys[e.key]=true;
+    });
+    window.addEventListener("keyup",e=>{ keys[e.key]=false; });
+
+    // --- Controles táctiles / D-Pad ---
+    const touchRoot = document.getElementById('touchControls');
+    const padButtons = Array.from(touchRoot.querySelectorAll('.btn-pad'));
+
+    function setDir(dir, pressed){
+      // mapea a las mismas teclas que ya usa el juego
+      const map = { up:"ArrowUp", down:"ArrowDown", left:"ArrowLeft", right:"ArrowRight" };
+      const key = map[dir];
+      if(!key) return;
+      keys[key] = !!pressed;
+      // feedback visual
+      const btn = padButtons.find(b=>b.dataset.dir===dir);
+      if(btn){ btn.dataset.active = pressed ? 'true' : 'false'; }
+    }
+
+    // soporta múltiples dedos: registramos por touch.identifier dónde está
+    const activeTouches = new Map(); // id -> dir
+
+    function getDirFromTarget(t){ return t && t.dataset ? t.dataset.dir : undefined; }
+
+    function onTouchStart(ev){
+      ev.preventDefault();
+      for(const touch of Array.from(ev.changedTouches)){
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const dir = getDirFromTarget(target);
+        if(dir){ activeTouches.set(touch.identifier, dir); setDir(dir, true); }
+      }
+    }
+    function onTouchMove(ev){
+      ev.preventDefault();
+      for(const touch of Array.from(ev.changedTouches)){
+        const prev = activeTouches.get(touch.identifier);
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const dir = getDirFromTarget(target);
+        if(dir !== prev){
+          if(prev) setDir(prev, false);
+          if(dir){ setDir(dir, true); activeTouches.set(touch.identifier, dir); } else { activeTouches.delete(touch.identifier); }
+        }
+      }
+    }
+    function onTouchEnd(ev){
+      ev.preventDefault();
+      for(const touch of Array.from(ev.changedTouches)){
+        const prev = activeTouches.get(touch.identifier);
+        if(prev){ setDir(prev, false); activeTouches.delete(touch.identifier); }
+      }
+    }
+
+    // activar listeners sólo en dispositivos táctiles para no interferir con mouse
+    const isTouchDevice = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+    if(isTouchDevice){
+      touchRoot.addEventListener('touchstart', onTouchStart, {passive:false});
+      touchRoot.addEventListener('touchmove',  onTouchMove,  {passive:false});
+      touchRoot.addEventListener('touchend',   onTouchEnd,   {passive:false});
+      touchRoot.addEventListener('touchcancel',onTouchEnd,   {passive:false});
+    }
+
+    // También soporta mouse (útil en pruebas)
+    padButtons.forEach(btn=>{
+      btn.addEventListener('pointerdown', e=>{ e.preventDefault(); setDir(btn.dataset.dir, true); });
+      btn.addEventListener('pointerup',   e=>{ e.preventDefault(); setDir(btn.dataset.dir, false); });
+      btn.addEventListener('pointerleave',e=>{ e.preventDefault(); setDir(btn.dataset.dir, false); });
+    });
+
+    playBtn.addEventListener("click",startGame);
+    againBtn.addEventListener("click",startGame);
+    bestScoreDisplay.textContent = localStorage.getItem("bestScore")||"0";
+
     function loop(now){
       if(!running) return;
       const dt = Math.min(50, now - lastFrame);
@@ -212,10 +338,10 @@
       ctx.clearRect(0,0,canvas.width,canvas.height);
       drawStars();
       if(!falling){
-        if(keys["a"] || keys["ArrowLeft"]) player.x -= player.speed;
+        if(keys["a"] || keys["ArrowLeft"])  player.x -= player.speed;
         if(keys["d"] || keys["ArrowRight"]) player.x += player.speed;
-        if(keys["w"] || keys["ArrowUp"]) player.y -= player.speed;
-        if(keys["s"] || keys["ArrowDown"]) player.y += player.speed;
+        if(keys["w"] || keys["ArrowUp"])    player.y -= player.speed;
+        if(keys["s"] || keys["ArrowDown"])  player.y += player.speed;
         player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
         player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
       } else {
@@ -224,12 +350,14 @@
         rotation += 0.12;
         if(player.y > canvas.height + 40){ endGame(); return; }
       }
+
       spawnTimer += dt;
       const currentSpawn = Math.max(currentMinSpawn, spawnEvery - speedFactor*200);
       while(spawnTimer >= currentSpawn){
         spawnTimer -= currentSpawn;
         clouds.push(newCloud());
       }
+
       const pRect = playerCollisionRect();
       for(let i=0;i<clouds.length;i++){
         const c = clouds[i];
@@ -240,30 +368,20 @@
         }
         if(c.y > canvas.height+60){ clouds.splice(i,1); i--; }
       }
+
       drawPlayer();
+
       scoreTimer += dt;
       if(!falling && scoreTimer >= 1000){
         score += 1;
         scoreTimer -= 1000;
         maybeMilestone();
       }
+
       ctx.fillStyle="yellow"; ctx.font="20px Fredoka One"; ctx.fillText("Score: "+Math.floor(score),10,30);
       drawMilestone(now);
       requestAnimationFrame(loop);
     }
-    const keys={};
-    window.addEventListener("keydown",e=>{
-      if(e.code==="Space"){
-        e.preventDefault();
-        if(menu.style.display!=="none"||gameOverScreen.style.display!=="none"){ startGame(); }
-        return;
-      }
-      keys[e.key]=true;
-    });
-    window.addEventListener("keyup",e=>{ keys[e.key]=false; });
-    playBtn.addEventListener("click",startGame);
-    againBtn.addEventListener("click",startGame);
-    bestScoreDisplay.textContent = localStorage.getItem("bestScore")||"0";
   })();
   </script>
 </body>
