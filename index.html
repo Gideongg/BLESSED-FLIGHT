@@ -75,7 +75,7 @@
     const playerImg=new Image(); playerImg.src="gato.png";
     const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(src=>{let i=new Image(); i.src=src; return i;});
 
-    function resetPlayer(){rotation=0;return{x:canvas.width/2-40,y:canvas.height-120,w:80,h:80,speed:4.2};}
+    function resetPlayer(){rotation=0;return{x:canvas.width/2-28,y:canvas.height-120,w:56,h:56,speed:4.2};}
 
     function newCloud(){
       const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
