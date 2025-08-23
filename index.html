@@ -62,7 +62,7 @@
       <div id="joystickKnob"></div>
     </div>
   </div>
-  <audio id="bgMusic" src="musica_fondo.mp3" loop preload="auto" playsinline></audio>
+  <audio id="bgMusic" src="musica_fondo.mp3" loop preload="auto" playsinline muted></audio>
 
   <script>
 (() => {
@@ -73,6 +73,7 @@
   const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
   const bgMusic=document.getElementById("bgMusic");
   const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
+  const gameContainer=document.getElementById("gameContainer");
 
   function resizeCanvas(){
     const dpr=window.devicePixelRatio||1;
@@ -104,7 +105,7 @@
     player={x:GAME_WIDTH/2-28,y:GAME_HEIGHT-120,w:56,h:56,speed:basePlayerSpeed};
     clouds=[];stars=[];score=0;running=false;falling=false;fallVelocity=0;rotation=0;
     spawnTimer=0;spawnEvery=1500;lastFrame=performance.now();
-    speedFactor=1.5;milestoneMsg=null;milestoneColor="yellow";
+    speedFactor=1.0;milestoneMsg=null;milestoneColor="yellow";
     milestoneStart=0;reached=new Set();
     buildStars();
   }
@@ -154,7 +155,7 @@
   function startGame(){
     resetVariables();
     menu.style.display="none";gameOverScreen.style.display="none";running=true;
-    try{bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}catch(e){}
+    try{bgMusic.muted=false;bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}catch(e){}
     requestAnimationFrame(loop);
   }
 
@@ -167,7 +168,8 @@
 
   let joyActive=false,joyCenter={x:0,y:0},joyPos={x:0,y:0};
   const joyMax=50;
-  canvas.addEventListener("touchstart",e=>{
+
+  gameContainer.addEventListener("touchstart",e=>{
     if(!running)return;
     const t=e.touches[0];
     joyActive=true;
@@ -176,7 +178,8 @@
     joystick.style.left=(joyCenter.x-60)+"px";
     joystick.style.top=(joyCenter.y-60)+"px";
   });
-  canvas.addEventListener("touchmove",e=>{
+
+  gameContainer.addEventListener("touchmove",e=>{
     if(!joyActive)return;
     const t=e.touches[0];
     let dx=t.clientX-joyCenter.x,dy=t.clientY-joyCenter.y;
@@ -185,7 +188,8 @@
     joyPos.x=Math.cos(angle)*dist/joyMax;joyPos.y=Math.sin(angle)*dist/joyMax;
     joystickKnob.style.transform=`translate(${joyPos.x*40}px,${joyPos.y*40}px)`;
   });
-  canvas.addEventListener("touchend",()=>{
+
+  gameContainer.addEventListener("touchend",()=>{
     joyActive=false;joyPos.x=0;joyPos.y=0;
     joystick.style.display="none";joystickKnob.style.transform="translate(0,0)";
   });
