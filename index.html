@@ -33,7 +33,6 @@
     #gameOverScreen img { width:200px; margin-bottom:18px; filter:drop-shadow(0 0 15px red); }
     #gameOverScreen h1 { font-size:2.5em; color:#ff3b3b; margin:0 0 8px; text-shadow:3px 3px 8px #000; letter-spacing:2px; }
     #finalScore { color:white; font-size:1.4em; margin-bottom:18px; text-shadow:2px 2px 5px #000; }
-    /* 🎮 Joystick Digital */
     #joystick {
       position:absolute; bottom:60px; left:60px;
       width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.15);
@@ -59,165 +58,185 @@
       <button id="againBtn" class="btn">FLIGHT AGAIN</button>
     </div>
     <canvas id="gameCanvas"></canvas>
-
-    <!-- 🎮 Joystick Digital -->
     <div id="joystick">
       <div id="joystickKnob"></div>
     </div>
   </div>
-
   <audio id="bgMusic" src="musica_fondo.mp3" loop preload="auto" playsinline></audio>
 
   <script>
-  (() => {
-    const GAME_WIDTH=400,GAME_HEIGHT=700,basePlayerSpeed=4.2;
-    const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
-    const menu=document.getElementById("menu"),playBtn=document.getElementById("playBtn");
-    const gameOverScreen=document.getElementById("gameOverScreen"),againBtn=document.getElementById("againBtn");
-    const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
-    const bgMusic=document.getElementById("bgMusic");
-    const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
+(() => {
+  const GAME_WIDTH=400,GAME_HEIGHT=700,basePlayerSpeed=4.2;
+  const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
+  const menu=document.getElementById("menu"),playBtn=document.getElementById("playBtn");
+  const gameOverScreen=document.getElementById("gameOverScreen"),againBtn=document.getElementById("againBtn");
+  const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
+  const bgMusic=document.getElementById("bgMusic");
+  const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
 
-    function resizeCanvas(){
-      const dpr=window.devicePixelRatio||1;
-      canvas.style.width=GAME_WIDTH+"px";canvas.style.height=GAME_HEIGHT+"px";
-      canvas.width=GAME_WIDTH*dpr;canvas.height=GAME_HEIGHT*dpr;
-      ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
-    }
-    window.addEventListener("resize",resizeCanvas);resizeCanvas();
+  function resizeCanvas(){
+    const dpr=window.devicePixelRatio||1;
+    canvas.style.width=GAME_WIDTH+"px";canvas.style.height=GAME_HEIGHT+"px";
+    canvas.width=GAME_WIDTH*dpr;canvas.height=GAME_HEIGHT*dpr;
+    ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
+  }
+  window.addEventListener("resize",resizeCanvas);resizeCanvas();
 
-    let player,clouds,stars,score=0,running=false,falling=false,fallVelocity=0,rotation=0;
-    let spawnTimer=0,spawnEvery=1500,lastFrame=0,speedFactor=1.5;
-    let milestoneMsg=null,milestoneColor="yellow",milestoneStart=0,reached=new Set();
+  function loadImage(src) {
+    return new Promise(res => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.src = src;
+    });
+  }
 
-    const playerImg=new Image();playerImg.src="gato.png";
-    const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(s=>{let i=new Image();i.src=s;return i;});
-    const milestones=[
-      {at:20,label:"DEVOTED",color:"gray"},
-      {at:40,label:"ENLIGHTENED",color:"orange"},
-      {at:60,label:"BLESSED",color:"yellow"},
-      {at:80,label:"MONK",color:"#FFD700"}
-    ];
+  let playerImg, cloudImgs = [];
+  async function loadAssets() {
+    playerImg = await loadImage("gato.png");
+    const cloudFiles = ["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"];
+    cloudImgs = await Promise.all(cloudFiles.map(loadImage));
+    menu.style.display = "flex";
+  }
 
-    function resetPlayer(){rotation=0;return{x:GAME_WIDTH/2-28,y:GAME_HEIGHT-120,w:56,h:56,speed:basePlayerSpeed};}
-    function newCloud(){const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)],size=70+Math.random()*50;return{x:Math.random()*(GAME_WIDTH-size),y:-size,w:size,h:size,speed:1+speedFactor,img};}
-    function buildStars(){stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*GAME_WIDTH,y:Math.random()*GAME_HEIGHT,r:Math.random()*2,color:Math.random()>0.5?"yellow":"black",speed:0.2+Math.random()*0.8});}
+  let player,clouds,stars,score,running,falling,fallVelocity,rotation;
+  let spawnTimer,spawnEvery,lastFrame,speedFactor,milestoneMsg,milestoneColor,milestoneStart,reached;
+  function resetVariables() {
+    player={x:GAME_WIDTH/2-28,y:GAME_HEIGHT-120,w:56,h:56,speed:basePlayerSpeed};
+    clouds=[];stars=[];score=0;running=false;falling=false;fallVelocity=0;rotation=0;
+    spawnTimer=0;spawnEvery=1500;lastFrame=performance.now();
+    speedFactor=1.5;milestoneMsg=null;milestoneColor="yellow";
+    milestoneStart=0;reached=new Set();
+    buildStars();
+  }
 
-    function maybeMilestone(){
-      for(const m of milestones){
-        if(score>=m.at&&!reached.has(m.at)){
-          reached.add(m.at);milestoneMsg=m.label;milestoneColor=m.color;milestoneStart=performance.now();
-          if(m.label==="DEVOTED"){speedFactor+=1.0;spawnEvery=1000;}
-          else if(m.label==="ENLIGHTENED"){speedFactor+=1.2;spawnEvery=700;}
-          else if(m.label==="BLESSED"){speedFactor+=1.5;spawnEvery=500;}
-          else if(m.label==="MONK"){speedFactor+=2.0;spawnEvery=300;}
-          player.speed=basePlayerSpeed*(1+(speedFactor-1)/2);
-        }
+  function buildStars(){
+    stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*GAME_WIDTH,y:Math.random()*GAME_HEIGHT,r:Math.random()*2,color:Math.random()>0.5?"yellow":"black",speed:0.2+Math.random()*0.8});
+  }
+
+  const milestones=[
+    {at:20,label:"DEVOTED",color:"gray"},
+    {at:40,label:"ENLIGHTENED",color:"orange"},
+    {at:60,label:"BLESSED",color:"yellow"},
+    {at:80,label:"MONK",color:"#FFD700"}
+  ];
+
+  function maybeMilestone(){
+    for(const m of milestones){
+      if(score>=m.at&&!reached.has(m.at)){
+        reached.add(m.at);milestoneMsg=m.label;milestoneColor=m.color;milestoneStart=performance.now();
+        if(m.label==="DEVOTED"){speedFactor+=1.0;spawnEvery=1000;}
+        else if(m.label==="ENLIGHTENED"){speedFactor+=1.2;spawnEvery=700;}
+        else if(m.label==="BLESSED"){speedFactor+=1.5;spawnEvery=500;}
+        else if(m.label==="MONK"){speedFactor+=2.0;spawnEvery=300;}
+        player.speed=basePlayerSpeed*(1+(speedFactor-1)/2);
       }
     }
+  }
 
-    function drawMilestone(now){
-      if(!milestoneMsg)return;
-      const elapsed=now-milestoneStart;
-      if(elapsed>1500){milestoneMsg=null;return;}
-      ctx.save();ctx.fillStyle=milestoneColor;ctx.font="40px Fredoka One";
-      ctx.textAlign="center";ctx.fillText(milestoneMsg,GAME_WIDTH/2,GAME_HEIGHT/2);ctx.restore();
+  function drawMilestone(now){
+    if(!milestoneMsg)return;
+    const elapsed=now-milestoneStart;
+    if(elapsed>1500){milestoneMsg=null;return;}
+    ctx.save();ctx.fillStyle=milestoneColor;ctx.font="40px Fredoka One";
+    ctx.textAlign="center";ctx.fillText(milestoneMsg,GAME_WIDTH/2,GAME_HEIGHT/2);ctx.restore();
+  }
+
+  function endGame(){
+    running=false;
+    bgMusic.pause();
+    gameOverScreen.style.display="flex";
+    finalScoreDisplay.textContent="Score: "+Math.floor(score);
+    let best=Number(localStorage.getItem("bestScore")||0);
+    if(score>best){localStorage.setItem("bestScore",Math.floor(score));best=score;}
+    bestScoreDisplay.textContent=best;
+  }
+
+  function startGame(){
+    resetVariables();
+    menu.style.display="none";gameOverScreen.style.display="none";running=true;
+    try{bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}catch(e){}
+    requestAnimationFrame(loop);
+  }
+
+  const keys={};
+  window.addEventListener("keydown",e=>{if(e.code==="Space"){if(menu.style.display!=="none"||gameOverScreen.style.display!=="none")startGame();e.preventDefault();return;}keys[e.key.toLowerCase()]=true;});
+  window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+  playBtn.addEventListener("click",startGame);againBtn.addEventListener("click",startGame);
+
+  function triggerFall(){falling=true;fallVelocity=-8;rotation=0;}
+
+  let joyActive=false,joyCenter={x:0,y:0},joyPos={x:0,y:0};
+  const joyMax=50;
+  canvas.addEventListener("touchstart",e=>{
+    if(!running)return;
+    const t=e.touches[0];
+    joyActive=true;
+    joyCenter.x=t.clientX;joyCenter.y=t.clientY;
+    joystick.style.display="block";
+    joystick.style.left=(joyCenter.x-60)+"px";
+    joystick.style.top=(joyCenter.y-60)+"px";
+  });
+  canvas.addEventListener("touchmove",e=>{
+    if(!joyActive)return;
+    const t=e.touches[0];
+    let dx=t.clientX-joyCenter.x,dy=t.clientY-joyCenter.y;
+    const dist=Math.min(Math.sqrt(dx*dx+dy*dy),joyMax);
+    const angle=Math.atan2(dy,dx);
+    joyPos.x=Math.cos(angle)*dist/joyMax;joyPos.y=Math.sin(angle)*dist/joyMax;
+    joystickKnob.style.transform=`translate(${joyPos.x*40}px,${joyPos.y*40}px)`;
+  });
+  canvas.addEventListener("touchend",()=>{
+    joyActive=false;joyPos.x=0;joyPos.y=0;
+    joystick.style.display="none";joystickKnob.style.transform="translate(0,0)";
+  });
+
+  function newCloud(){
+    const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
+    const size=70+Math.random()*50;
+    return{x:Math.random()*(GAME_WIDTH-size),y:-size,w:size,h:size,speed:1+speedFactor,img};
+  }
+
+  function loop(now){
+    if(!running)return;
+    const dt=Math.min(50,now-lastFrame);lastFrame=now;
+    ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+
+    for(const s of stars){s.y+=s.speed;if(s.y>GAME_HEIGHT){s.y=0;s.x=Math.random()*GAME_WIDTH;}ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+
+    if(!falling){
+      if(keys["a"]||keys["arrowleft"])player.x-=player.speed;
+      if(keys["d"]||keys["arrowright"])player.x+=player.speed;
+      if(keys["w"]||keys["arrowup"])player.y-=player.speed;
+      if(keys["s"]||keys["arrowdown"])player.y+=player.speed;
+      player.x+=joyPos.x*player.speed*3;
+      player.y+=joyPos.y*player.speed*3;
+      player.x=Math.max(0,Math.min(GAME_WIDTH-player.w,player.x));
+      player.y=Math.max(0,Math.min(GAME_HEIGHT-player.h,player.y));
+    } else {
+      fallVelocity+=0.5;player.y+=fallVelocity;rotation+=0.12;
+      if(player.y>GAME_HEIGHT+40){endGame();return;}
     }
 
-    function endGame(){
-      running=false;
-      bgMusic.pause();
-      gameOverScreen.style.display="flex";
-      finalScoreDisplay.textContent="Score: "+Math.floor(score);
-      let best=Number(localStorage.getItem("bestScore")||0);
-      if(score>best){localStorage.setItem("bestScore",Math.floor(score));best=score;}
-      bestScoreDisplay.textContent=best;
+    spawnTimer+=dt;while(spawnTimer>=spawnEvery){spawnTimer-=spawnEvery;clouds.push(newCloud());}
+    const pRect={x:player.x,y:player.y,w:player.w,h:player.h};
+    for(let i=0;i<clouds.length;i++){
+      const c=clouds[i];c.y+=c.speed;ctx.drawImage(c.img,c.x,c.y,c.w,c.h);
+      if(!falling && !(pRect.x+pRect.w<c.x||pRect.x>c.x+c.w||pRect.y+pRect.h<c.y||pRect.y>c.y+c.h)){triggerFall();}
+      if(c.y>GAME_HEIGHT+60){clouds.splice(i,1);i--;}
     }
 
-    function startGame(){
-      player=resetPlayer();clouds=[];buildStars();score=0;spawnTimer=0;speedFactor=1.5;
-      spawnEvery=1500;falling=false;rotation=0;milestoneMsg=null;reached.clear();
-      menu.style.display="none";gameOverScreen.style.display="none";running=true;
-      try{bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}catch(e){}
-      requestAnimationFrame(loop);
-    }
+    ctx.save();ctx.translate(player.x+player.w/2,player.y+player.h/2);ctx.rotate(rotation);
+    ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
 
-    const keys={};
-    window.addEventListener("keydown",e=>{if(e.code==="Space"){if(menu.style.display!=="none"||gameOverScreen.style.display!=="none")startGame();e.preventDefault();return;}keys[e.key.toLowerCase()]=true;});
-    window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
-    playBtn.addEventListener("click",startGame);againBtn.addEventListener("click",startGame);
+    if(!falling){score+=dt/1000;maybeMilestone();}
+    ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);
+    drawMilestone(now);
 
-    function triggerFall(){falling=true;fallVelocity=-8;rotation=0;}
+    requestAnimationFrame(loop);
+  }
 
-    // 🎮 JOYSTICK DIGITAL
-    let joyActive=false,joyCenter={x:0,y:0},joyPos={x:0,y:0};
-    const joyMax=50;
-    canvas.addEventListener("touchstart",e=>{
-      if(!running)return;
-      const t=e.touches[0];
-      joyActive=true;
-      joyCenter.x=t.clientX;joyCenter.y=t.clientY;
-      joystick.style.display="block";
-      joystick.style.left=(joyCenter.x-60)+"px";
-      joystick.style.top=(joyCenter.y-60)+"px";
-    });
-    canvas.addEventListener("touchmove",e=>{
-      if(!joyActive)return;
-      const t=e.touches[0];
-      let dx=t.clientX-joyCenter.x,dy=t.clientY-joyCenter.y;
-      const dist=Math.min(Math.sqrt(dx*dx+dy*dy),joyMax);
-      const angle=Math.atan2(dy,dx);
-      joyPos.x=Math.cos(angle)*dist/joyMax;joyPos.y=Math.sin(angle)*dist/joyMax;
-      joystickKnob.style.transform=`translate(${joyPos.x*40}px,${joyPos.y*40}px)`;
-    });
-    canvas.addEventListener("touchend",()=>{
-      joyActive=false;joyPos.x=0;joyPos.y=0;
-      joystick.style.display="none";joystickKnob.style.transform="translate(0,0)";
-    });
-
-    function loop(now){
-      if(!running)return;
-      const dt=Math.min(50,now-lastFrame);lastFrame=now;
-      ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
-
-      for(const s of stars){s.y+=s.speed;if(s.y>GAME_HEIGHT){s.y=0;s.x=Math.random()*GAME_WIDTH;}ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-
-      if(!falling){
-        // 🔥 Movimiento con teclado
-        if(keys["a"]||keys["arrowleft"])player.x-=player.speed;
-        if(keys["d"]||keys["arrowright"])player.x+=player.speed;
-        if(keys["w"]||keys["arrowup"])player.y-=player.speed;
-        if(keys["s"]||keys["arrowdown"])player.y+=player.speed;
-
-        // 🔥 Movimiento con joystick
-        player.x+=joyPos.x*player.speed*3;
-        player.y+=joyPos.y*player.speed*3;
-
-        player.x=Math.max(0,Math.min(GAME_WIDTH-player.w,player.x));
-        player.y=Math.max(0,Math.min(GAME_HEIGHT-player.h,player.y));
-      } else {
-        fallVelocity+=0.5;player.y+=fallVelocity;rotation+=0.12;
-        if(player.y>GAME_HEIGHT+40){endGame();return;}
-      }
-
-      spawnTimer+=dt;while(spawnTimer>=spawnEvery){spawnTimer-=spawnEvery;clouds.push(newCloud());}
-      const pRect={x:player.x,y:player.y,w:player.w,h:player.h};
-      for(let i=0;i<clouds.length;i++){
-        const c=clouds[i];c.y+=c.speed;ctx.drawImage(c.img,c.x,c.y,c.w,c.h);
-        if(!falling && !(pRect.x+pRect.w<c.x||pRect.x>c.x+c.w||pRect.y+pRect.h<c.y||pRect.y>c.y+c.h)){triggerFall();}
-        if(c.y>GAME_HEIGHT+60){clouds.splice(i,1);i--;}
-      }
-
-      ctx.save();ctx.translate(player.x+player.w/2,player.y+player.h/2);ctx.rotate(rotation);
-      ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
-
-      if(!falling){score+=dt/1000;maybeMilestone();}
-      ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);
-      drawMilestone(now);
-
-      requestAnimationFrame(loop);
-    }
-  })();
+  loadAssets();
+})();
   </script>
 </body>
 </html>
