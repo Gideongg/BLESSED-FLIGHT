@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Blessed Flight – Final Antibugs</title>
+  <title>Blessed Flight – Final</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     :root { --w: 400px; --h: 700px; }
@@ -24,7 +24,7 @@
     #menu {
       flex-direction:column; align-items:flex-end; justify-content:flex-end;
       padding:0 20px 60px 20px; z-index:10;
-      background:url("PRINCIPAL.png?v=10") no-repeat center/cover; pointer-events:auto;
+      background:url("PRINCIPAL.png") no-repeat center/cover; pointer-events:auto;
     }
     .btn {
       font-size:2em; color:yellow; background:black; border:4px solid yellow;
@@ -82,7 +82,7 @@
 
       <!-- Game Over -->
       <div id="gameOverScreen">
-        <img src="demonio.png?v=10" alt="Demonio sombrío" />
+        <img src="demonio.png" alt="Demonio sombrío" />
         <h1>CURSED</h1>
         <div id="finalScore">Score: 0</div>
         <button id="againBtn" class="btn" disabled>FLIGHT AGAIN</button>
@@ -93,13 +93,13 @@
     </div>
   </div>
 
-  <audio id="bgMusic" src="musica_fondo.mp3?v=10" loop playsinline preload="none" muted></audio>
+  <audio id="bgMusic" src="musica_fondo.mp3" loop playsinline preload="none" muted></audio>
 
   <script>
 (() => {
   const GAME_WIDTH=400, GAME_HEIGHT=700, basePlayerSpeed=4.2;
   const MAX_CLOUDS=40;
-  let STAR_COUNT = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ? 50 : 100;
+  let STAR_COUNT=(navigator.hardwareConcurrency && navigator.hardwareConcurrency<=4)?50:100;
 
   const container=document.getElementById("gameContainer");
   const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
@@ -114,9 +114,9 @@
   const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
   const rotateOverlay=document.getElementById("rotateOverlay");
 
-  // Resize + HiDPI
+  // Fit & resize
   function fitToViewport(){
-    const borderExtra = 8+20;
+    const borderExtra=8+20;
     const scale=Math.min(window.innerWidth/(400+borderExtra),window.innerHeight/(700+borderExtra),1);
     container.style.transform=`scale(${scale})`;
   }
@@ -137,12 +137,12 @@
   window.addEventListener("orientationchange",checkOrientation); checkOrientation();
 
   // Storage seguro
-  function lsGet(k,d=0){try{return Number(localStorage.getItem(k)??d);}catch{console.warn("localStorage inaccesible");return d;}}
-  function lsSet(k,v){try{localStorage.setItem(k,v);}catch{console.warn("No se pudo guardar score");}}
+  function lsGet(k,d=0){try{return Number(localStorage.getItem(k)??d);}catch{return d;}}
+  function lsSet(k,v){try{localStorage.setItem(k,v);}catch{}}
   bestScoreDisplay.textContent=lsGet("bestScore",0);
 
   // Loader assets
-  const assetList=["gato.png?v=10","nube_grande.png?v=10","nube_pequeña.png?v=10","nube_negra.png?v=10","nube_negra_pequeña.png?v=10","PRINCIPAL.png?v=10","demonio.png?v=10"];
+  const assetList=["gato.png","nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png","PRINCIPAL.png","demonio.png"];
   function loadImage(src){
     return new Promise(res=>{
       const img=new Image();
@@ -164,59 +164,33 @@
   // Animación LOADING ...
   let dotStep=0; setInterval(()=>{dotStep=(dotStep+1)%4; loadingDots.textContent=".".repeat(dotStep);},350);
 
-  // Audio seguro + reintento
+  // Audio seguro
   function safeStart(){try{if(bgMusic.paused){bgMusic.muted=false;bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}}catch{} startGame();}
   document.addEventListener("visibilitychange",()=>{if(!document.hidden) safeStart();});
-
   playBtn.addEventListener("click",safeStart); againBtn.addEventListener("click",safeStart);
 
-  // ================= Juego =================
-  let player,clouds,stars,score,running,falling,fallVelocity,rotation;
-  let spawnTimer,spawnEvery,lastFrame,speedFactor,milestoneMsg,milestoneColor,milestoneStart,reached;
-
+  // Juego
+  let player,clouds,stars,score,running;
   function resetVariables(){
     player={x:GAME_WIDTH/2-28,y:GAME_HEIGHT-120,w:56,h:56,speed:basePlayerSpeed};
-    clouds=[]; stars=[]; score=0; running=false; falling=false; fallVelocity=0; rotation=0;
-    spawnTimer=0; spawnEvery=1500; lastFrame=performance.now();
-    speedFactor=1.0; milestoneMsg=null; milestoneColor="yellow"; milestoneStart=0; reached=new Set();
-    stars=[];for(let i=0;i<STAR_COUNT;i++) stars.push({x:Math.random()*GAME_WIDTH,y:Math.random()*GAME_HEIGHT,r:Math.random()*2,color:Math.random()>0.5?"yellow":"black",speed:0.2+Math.random()*0.8});
+    clouds=[]; stars=[]; score=0; running=false;
   }
 
-  const milestones=[{at:20,label:"DEVOTED",color:"gray"},{at:40,label:"ENLIGHTENED",color:"orange"},{at:60,label:"BLESSED",color:"yellow"},{at:80,label:"MONK",color:"#FFD700"}];
-
-  function maybeMilestone(){for(const m of milestones){if(score>=m.at&&!reached.has(m.at)){reached.add(m.at);milestoneMsg=m.label;milestoneColor=m.color;milestoneStart=performance.now();if(m.label==="DEVOTED"){speedFactor+=1.0;spawnEvery=1000;}else if(m.label==="ENLIGHTENED"){speedFactor+=1.2;spawnEvery=700;}else if(m.label==="BLESSED"){speedFactor+=1.5;spawnEvery=500;}else if(m.label==="MONK"){speedFactor+=2.0;spawnEvery=300;}player.speed=basePlayerSpeed*(1+(speedFactor-1)/2);}}}
-  function drawMilestone(now){if(!milestoneMsg)return;const elapsed=now-milestoneStart;if(elapsed>1500){milestoneMsg=null;return;}ctx.save();ctx.fillStyle=milestoneColor;ctx.font="40px Fredoka One";ctx.textAlign="center";ctx.fillText(milestoneMsg,GAME_WIDTH/2,GAME_HEIGHT/2);ctx.restore();}
-
-  function endGame(){running=false;try{bgMusic.pause();}catch{}gameOverScreen.style.display="flex";finalScoreDisplay.textContent="Score: "+Math.floor(score);const best=lsGet("bestScore",0);if(score>best){lsSet("bestScore",Math.floor(score));bestScoreDisplay.textContent=Math.floor(score);}}
+  function endGame(){running=false;bgMusic.pause();gameOverScreen.style.display="flex";finalScoreDisplay.textContent="Score: "+Math.floor(score);const best=lsGet("bestScore",0);if(score>best){lsSet("bestScore",Math.floor(score));bestScoreDisplay.textContent=Math.floor(score);}}
   function startGame(){resetVariables();menu.style.display="none";gameOverScreen.style.display="none";running=true;requestAnimationFrame(loop);}
 
   // Input
-  const keys={}; window.addEventListener("keydown",e=>{if(e.code==="Space"){if(menu.style.display!=="none"||gameOverScreen.style.display!=="none")safeStart();e.preventDefault();return;}keys[e.key.toLowerCase()]=true;});
+  const keys={}; 
+  window.addEventListener("keydown",e=>{
+    if(e.code==="Space"){if(menu.style.display!=="none"||gameOverScreen.style.display!=="none"){if(!playBtn.disabled) safeStart();}e.preventDefault();return;}
+    keys[e.key.toLowerCase()]=true;});
   window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
 
-  // Joystick
-  let joyActive=false,joyCenter={x:0,y:0},joyPos={x:0,y:0},activeTouchId=null;
-  const joyMax=50;
-  container.addEventListener("touchstart",e=>{if(!running||joyActive)return;const t=e.changedTouches[0];if(t.clientY<window.innerHeight/2)return;joyActive=true;activeTouchId=t.identifier;joyCenter.x=t.clientX;joyCenter.y=t.clientY;joystick.style.display="block";joystick.style.left=(joyCenter.x-60)+"px";joystick.style.top=(joyCenter.y-60)+"px";},{passive:true});
-  container.addEventListener("touchmove",e=>{if(!joyActive)return;const t=[...e.changedTouches].find(tt=>tt.identifier===activeTouchId);if(!t)return;let dx=t.clientX-joyCenter.x,dy=t.clientY-joyCenter.y;const dist=Math.min(Math.hypot(dx,dy),joyMax);const angle=Math.atan2(dy,dx);joyPos.x=Math.cos(angle)*dist/joyMax;joyPos.y=Math.sin(angle)*dist/joyMax;joystickKnob.style.transform=`translate(${joyPos.x*40}px,${joyPos.y*40}px)`;},{passive:true});
-  function releaseJoystick(){joyActive=false;activeTouchId=null;joyPos.x=0;joyPos.y=0;joystick.style.display="none";joystickKnob.style.transform="translate(0,0)";}
-  container.addEventListener("touchend",e=>{if([...e.changedTouches].some(tt=>tt.identifier===activeTouchId))releaseJoystick();},{passive:true});
-  container.addEventListener("touchcancel",e=>{if([...e.changedTouches].some(tt=>tt.identifier===activeTouchId))releaseJoystick();},{passive:true});
+  function loop(){if(!running)return;ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+    ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);
+    requestAnimationFrame(loop);
+  }
 
-  function newCloud(){const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)];const size=70+Math.random()*50;return{x:Math.random()*(GAME_WIDTH-size),y:-size,w:size,h:size,speed:1+speedFactor,img};}
-
-  function loop(now){if(!running)return;const dt=Math.min(50,now-lastFrame);lastFrame=now;ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
-    for(const s of stars){s.y+=s.speed;if(s.y>GAME_HEIGHT){s.y=0;s.x=Math.random()*GAME_WIDTH;}ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-    if(!falling){if(keys["a"]||keys["arrowleft"])player.x-=player.speed;if(keys["d"]||keys["arrowright"])player.x+=player.speed;if(keys["w"]||keys["arrowup"])player.y-=player.speed;if(keys["s"]||keys["arrowdown"])player.y+=player.speed;player.x+=joyPos.x*player.speed*3;player.y+=joyPos.y*player.speed*3;player.x=Math.max(0,Math.min(GAME_WIDTH-player.w,player.x));player.y=Math.max(0,Math.min(GAME_HEIGHT-player.h,player.y));}else{fallVelocity+=0.5;player.y+=fallVelocity;rotation+=0.12;if(player.y>GAME_HEIGHT+40){endGame();return;}}
-    spawnTimer+=dt;while(spawnTimer>=spawnEvery){spawnTimer-=spawnEvery;clouds.push(newCloud());if(clouds.length>MAX_CLOUDS)clouds.shift();}
-    const pRect={x:player.x,y:player.y,w:player.w,h:player.h};for(let i=0;i<clouds.length;i++){const c=clouds[i];c.y+=c.speed;ctx.drawImage(c.img,c.x,c.y,c.w,c.h);if(!falling&&!(pRect.x+pRect.w<c.x||pRect.x>c.x+c.w||pRect.y+pRect.h<c.y||pRect.y>c.y+c.h)){falling=true;fallVelocity=-8;rotation=0;}if(c.y>GAME_HEIGHT+60){clouds.splice(i,1);i--;}}
-    ctx.save();ctx.translate(player.x+player.w/2,player.y+player.h/2);ctx.rotate(rotation);ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
-    if(!falling){score+=dt/1000;maybeMilestone();}ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);drawMilestone(now);
-    requestAnimationFrame(loop);}
-  
-  // Service Worker dinámico
-  if("serviceWorker" in navigator){const swCode=`self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open('bf-cache-${Date.now()}').then(c=>c.addAll(['./','./index.html','gato.png?v=10','nube_grande.png?v=10','nube_pequeña.png?v=10','nube_negra.png?v=10','nube_negra_pequeña.png?v=10','PRINCIPAL.png?v=10','demonio.png?v=10','musica_fondo.mp3?v=10']).catch(()=>{})));});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;const blob=new Blob([swCode],{type:"text/javascript"});const url=URL.createObjectURL(blob);navigator.serviceWorker.register(url).catch(()=>{});}
-  
   preloadAll();
 })();
   </script>
