@@ -44,10 +44,19 @@
       margin-left:-30px; margin-top:-30px; border-radius:50%;
       background:rgba(255,255,255,0.4); border:2px solid rgba(255,255,255,0.5);
     }
-  </style>
+  #loadingScreen {
+      position:absolute; inset:0; background:black; color:yellow;
+      display:flex; align-items:center; justify-content:center;
+      font-size:2em; z-index:50;
+    }
+    </style>
 </head>
 <body>
   <div id="gameContainer">
+    <!-- 🔄 Pantalla de carga -->
+    <div id="loadingScreen">
+      <h1>Cargando...</h1>
+    </div>
     <div id="menu">
       <button id="playBtn" class="btn">PLAY</button>
       <div class="best">Best Score: <span id="bestScore">0</span></div>
@@ -77,6 +86,29 @@
     const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
     const bgMusic=document.getElementById("bgMusic");
     const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
+    const loadingScreen=document.getElementById("loadingScreen");
+
+    // Lista de recursos a precargar
+    const resources=[playerImg,...cloudImgs,bgMusic];
+    let loaded=0;
+
+    function checkLoaded(){
+      loaded++;
+      if(loaded>=resources.length){
+        loadingScreen.style.display="none";
+        menu.style.display="flex"; // ahora sí mostramos el menú
+      }
+    }
+
+    // Eventos de carga de imágenes y audio
+    resources.forEach(r=>{
+      if(r.tagName==="AUDIO"){
+        r.addEventListener("canplaythrough",checkLoaded,{once:true});
+      } else {
+        r.addEventListener("load",checkLoaded,{once:true});
+      }
+    });
+
 
     function resizeCanvas(){
       const dpr=window.devicePixelRatio||1;
