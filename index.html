@@ -1,34 +1,66 @@
+Listo. Aquí tienes **un solo archivo `index.html`** que:
+
+* **Bloquea móvil/tablet** (no carga nada del juego y muestra “ONLY ON PC — Please open this game on a computer”).
+* **Funciona solo en PC** con **WASD** y **flechas**.
+* Pantalla **LOADING...** que espera solo a que carguen las **imágenes**.
+* **Mensaje “ONLY ON PC”** en el menú inicial.
+* Loop y teclado asegurados; compatibilidad amplia con `requestAnimationFrame` + fallback.
+
+> Asegúrate de tener estos archivos en la misma carpeta:
+> `PRINCIPAL (2).png`, `gato.png`, `nube_grande.png`, `nube_pequeña.png`, `nube_negra.png`, `nube_negra_pequeña.png`, `demonio.png`, `musica_fondo.mp3`
+
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>Blessed Flight</title>
+  <!-- Meta simple para evitar avisos de orientación en móviles -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      margin:0; padding:0; display:flex; justify-content:center; align-items:center;
-      height:100vh; background:black; font-family:'Fredoka One',system-ui,sans-serif; overflow:hidden;
-      color:white;
+      margin:0; padding:0;
+      display:flex; justify-content:center; align-items:center;
+      background:black; color:white; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", "Fredoka One", sans-serif;
+      overflow:hidden;
     }
+
+    /* BLOQUEO EN MÓVIL/TABLET */
+    #mobileBlock {
+      position:fixed; inset:0; background:black;
+      display:flex; align-items:center; justify-content:center; text-align:center;
+      font-size:1.25rem; color:yellow; padding:24px;
+    }
+
+    /* CONTENEDOR DEL JUEGO (solo PC) */
     #gameContainer {
-      position:relative; width:400px; height:700px;
-      border:4px solid yellow; border-radius:20px; box-shadow:0 0 20px yellow;
-      background:#87ceeb; overflow:hidden; display:none;
+      position:relative; width:400px; height:700px; display:none;
+      overflow:hidden; border:4px solid yellow; border-radius:20px; box-shadow:0 0 20px yellow;
+      background:#87ceeb;
     }
     canvas { display:block; width:100%; height:100%; z-index:1; }
+
+    /* MENÚ INICIAL */
     #menu {
-      position:absolute; inset:0; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;
-      padding:0 20px 60px 20px; z-index:10; background:url("PRINCIPAL (2).png") no-repeat center/cover; pointer-events:auto;
+      position:absolute; inset:0; z-index:10;
+      display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;
+      padding:0 20px 60px 20px;
+      background:url("PRINCIPAL (2).png") no-repeat center/cover;
+      pointer-events:auto;
     }
     .btn {
       font-size:2em; color:yellow; background:black; border:4px solid yellow;
       padding:12px 28px; border-radius:20px; cursor:pointer; text-shadow:3px 3px 0 #000;
-      margin-top:20px; box-shadow:0 0 15px yellow; transition:transform 0.2s ease;
+      margin-top:20px; box-shadow:0 0 15px yellow; transition:transform .2s ease;
     }
     .btn:hover { transform:scale(1.06); }
     .best { color:white; font-size:1.1em; text-shadow:2px 2px 0 #000; margin-top:10px; align-self:center; }
     .only-pc { color:red; font-size:1em; margin-top:20px; align-self:center; text-shadow:1px 1px 0 #000; }
 
+    /* GAME OVER */
     #gameOverScreen {
       position:absolute; inset:0; background:rgba(0,0,0,0.92); z-index:4; display:none;
       flex-direction:column; align-items:center; justify-content:center; padding:20px;
@@ -37,37 +69,33 @@
     #gameOverScreen h1 { font-size:2.5em; color:#ff3b3b; margin:0 0 8px; text-shadow:3px 3px 8px #000; letter-spacing:2px; }
     #finalScore { color:white; font-size:1.4em; margin-bottom:18px; text-shadow:2px 2px 5px #000; }
 
-    /* Pantalla de carga */
+    /* LOADING */
     #loadingScreen {
       position:absolute; inset:0; display:flex; justify-content:center; align-items:center;
-      background:black; color:yellow; font-size:2em; font-family:'Fredoka One'; z-index:100;
+      background:black; color:yellow; font-size:2em; z-index:100;
     }
 
-    /* Bloqueo móvil */
-    #mobileBlock {
-      position:fixed; inset:0; background:black; display:flex;
-      align-items:center; justify-content:center; text-align:center;
-      font-size:1.5em; color:yellow; padding:20px;
-    }
+    /* Prefiere deshabilitar acciones táctiles por si algún híbrido pasa el filtro */
+    #gameContainer, canvas { touch-action: none; -ms-touch-action: none; }
   </style>
 </head>
 <body>
-  <!-- Bloqueo en móvil -->
+  <!-- Mensaje para móvil/tablet -->
   <div id="mobileBlock">ONLY ON PC — Please open this game on a computer</div>
 
-  <!-- Juego -->
-  <div id="gameContainer">
+  <!-- Juego (solo en PC) -->
+  <div id="gameContainer" aria-hidden="true">
     <div id="loadingScreen">LOADING...</div>
 
     <div id="menu" style="display:none;">
-      <button id="playBtn" class="btn">PLAY</button>
+      <button id="playBtn" class="btn" aria-label="Play">PLAY</button>
       <div class="best">Best Score: <span id="bestScore">0</span></div>
       <div class="only-pc">ONLY ON PC</div>
     </div>
 
-    <div id="gameOverScreen">
+    <div id="gameOverScreen" role="dialog" aria-modal="true" aria-labelledby="goTitle">
       <img src="demonio.png" alt="Demonio sombrío" />
-      <h1>CURSED</h1>
+      <h1 id="goTitle">CURSED</h1>
       <div id="finalScore">Score: 0</div>
       <button id="againBtn" class="btn">FLIGHT AGAIN</button>
     </div>
@@ -77,141 +105,202 @@
   </div>
 
   <script>
-  // Detectar móvil/tablet
-  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+    // -------- Bloqueo móvil/tablet (robusto) --------
+    (function(){
+      const ua = navigator.userAgent || "";
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+      const isMobileUA = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(ua);
+      const blockMobile = isMobileUA || isTouch;
 
-  if(!isMobile){
-    document.getElementById("mobileBlock").style.display="none";
-    document.getElementById("gameContainer").style.display="block";
+      const mobileBlock = document.getElementById("mobileBlock");
+      const gameContainer = document.getElementById("gameContainer");
 
-    // ==== CÓDIGO DEL JUEGO ====
-    (() => {
-      const GAME_WIDTH=400,GAME_HEIGHT=700,basePlayerSpeed=4.2;
-      const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d");
-      const menu=document.getElementById("menu"),playBtn=document.getElementById("playBtn");
-      const gameOverScreen=document.getElementById("gameOverScreen"),againBtn=document.getElementById("againBtn");
-      const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
-      const bgMusic=document.getElementById("bgMusic");
-      const loadingScreen=document.getElementById("loadingScreen");
-
-      function resizeCanvas(){
-        const dpr=window.devicePixelRatio||1;
-        canvas.style.width=GAME_WIDTH+"px";canvas.style.height=GAME_HEIGHT+"px";
-        canvas.width=GAME_WIDTH*dpr;canvas.height=GAME_HEIGHT*dpr;
-        ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
-      }
-      window.addEventListener("resize",resizeCanvas);resizeCanvas();
-
-      let player,clouds,stars,score=0,running=false,falling=false,fallVelocity=0,rotation=0;
-      let spawnTimer=0,spawnEvery=1500,lastFrame=0,speedFactor=1.5;
-
-      const playerImg=new Image();playerImg.src="gato.png";
-      const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(s=>{let i=new Image();i.src=s;return i;});
-
-      // precarga imágenes
-      const assets=[playerImg,...cloudImgs];
-      let loaded=0;
-      assets.forEach(asset=>{
-        asset.onload=checkLoaded;
-      });
-
-      function checkLoaded(){
-        loaded++;
-        if(loaded>=assets.length){
-          loadingScreen.style.display="none";
-          menu.style.display="flex";
-        }
+      if (blockMobile) {
+        // Solo mostramos aviso; no montamos el juego
+        mobileBlock.style.display = "flex";
+        gameContainer.style.display = "none";
+        gameContainer.setAttribute("aria-hidden","true");
+        return; // ⛔ salimos: no cargamos lógica de juego
       }
 
-      function resetPlayer(){rotation=0;return{x:GAME_WIDTH/2-28,y:GAME_HEIGHT-120,w:56,h:56,speed:basePlayerSpeed};}
-      function newCloud(){const img=cloudImgs[Math.floor(Math.random()*cloudImgs.length)],size=70+Math.random()*50;return{x:Math.random()*(GAME_WIDTH-size),y:-size,w:size,h:size,speed:1+speedFactor,img};}
-      function buildStars(){stars=[];for(let i=0;i<120;i++)stars.push({x:Math.random()*GAME_WIDTH,y:Math.random()*GAME_HEIGHT,r:Math.random()*2,color:Math.random()>0.5?"yellow":"black",speed:0.2+Math.random()*0.8});}
+      // PC: ocultar aviso y mostrar juego
+      mobileBlock.style.display = "none";
+      gameContainer.style.display = "block";
+      gameContainer.removeAttribute("aria-hidden");
 
-      function endGame(){
-        running=false;
-        bgMusic.pause();
-        gameOverScreen.style.display="flex";
-        finalScoreDisplay.textContent="Score: "+Math.floor(score);
-        let best=Number(localStorage.getItem("bestScore")||0);
-        if(score>best){localStorage.setItem("bestScore",Math.floor(score));best=score;}
-        bestScoreDisplay.textContent=best;
-      }
+      // -------- Lógica del juego --------
+      (function(){
+        const GAME_WIDTH=400, GAME_HEIGHT=700, basePlayerSpeed=4.2;
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const menu = document.getElementById("menu");
+        const playBtn = document.getElementById("playBtn");
+        const gameOverScreen = document.getElementById("gameOverScreen");
+        const againBtn = document.getElementById("againBtn");
+        const bestScoreDisplay = document.getElementById("bestScore");
+        const finalScoreDisplay = document.getElementById("finalScore");
+        const bgMusic = document.getElementById("bgMusic");
+        const loadingScreen = document.getElementById("loadingScreen");
 
-      function startGame(){
-        player=resetPlayer();
-        clouds=[];buildStars();
-        score=0;spawnTimer=0;speedFactor=1.5;
-        spawnEvery=1500;falling=false;rotation=0;
-        menu.style.display="none";
-        gameOverScreen.style.display="none";
-        running=true;
-        lastFrame=performance.now();
-        window.focus(); // asegurar foco
-        try{bgMusic.currentTime=0;bgMusic.play().catch(()=>{});}catch(e){}
-        requestAnimationFrame(t=>loop(t || performance.now()));
-      }
-
-      const keys={};
-      window.addEventListener("keydown",e=>{
-        if(e.code==="Space"){
-          if(menu.style.display!=="none"||gameOverScreen.style.display!=="none")startGame();
-          e.preventDefault();return;
+        // Canvas HiDPI
+        function resizeCanvas(){
+          const dpr = window.devicePixelRatio || 1;
+          canvas.style.width = GAME_WIDTH + "px";
+          canvas.style.height = GAME_HEIGHT + "px";
+          canvas.width = Math.floor(GAME_WIDTH * dpr);
+          canvas.height = Math.floor(GAME_HEIGHT * dpr);
+          ctx.setTransform(1,0,0,1,0,0);
+          ctx.scale(dpr, dpr);
         }
-        keys[e.key.toLowerCase()]=true;
-      });
-      window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
-      playBtn.addEventListener("click",startGame);
-      againBtn.addEventListener("click",startGame);
+        window.addEventListener("resize", resizeCanvas, { passive:true });
+        resizeCanvas();
 
-      function loop(now){
-        if(!running)return;
-        if(!now) now = performance.now();
-        const dt=Math.min(50,now-lastFrame);
-        lastFrame=now;
-        ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+        // Estado
+        let player, clouds, stars, score=0, running=false, falling=false, fallVelocity=0, rotation=0;
+        let spawnTimer=0, spawnEvery=1500, lastFrame=0, speedFactor=1.5;
 
-        // estrellas
-        for(const s of stars){
-          s.y+=s.speed;
-          if(s.y>GAME_HEIGHT){s.y=0;s.x=Math.random()*GAME_WIDTH;}
-          ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
-        }
+        // Recursos
+        const playerImg = new Image(); playerImg.src = "gato.png";
+        const cloudImgsSrc = ["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"];
+        const cloudImgs = cloudImgsSrc.map(src => { const i=new Image(); i.src=src; return i; });
 
-        if(!falling){
-          if(keys["a"]||keys["arrowleft"])player.x-=player.speed;
-          if(keys["d"]||keys["arrowright"])player.x+=player.speed;
-          if(keys["w"]||keys["arrowup"])player.y-=player.speed;
-          if(keys["s"]||keys["arrowdown"])player.y+=player.speed;
-          player.x=Math.max(0,Math.min(GAME_WIDTH-player.w,player.x));
-          player.y=Math.max(0,Math.min(GAME_HEIGHT-player.h,player.y));
-        } else {
-          fallVelocity+=0.5;player.y+=fallVelocity;rotation+=0.12;
-          if(player.y>GAME_HEIGHT+40){endGame();return;}
-        }
-
-        spawnTimer+=dt;
-        while(spawnTimer>=spawnEvery){
-          spawnTimer-=spawnEvery;clouds.push(newCloud());
-        }
-        const pRect={x:player.x,y:player.y,w:player.w,h:player.h};
-        for(let i=0;i<clouds.length;i++){
-          const c=clouds[i];c.y+=c.speed;ctx.drawImage(c.img,c.x,c.y,c.w,c.h);
-          if(!falling && !(pRect.x+pRect.w<c.x||pRect.x>c.x+c.w||pRect.y+pRect.h<c.y||pRect.y>c.y+c.h)){
-            falling=true;fallVelocity=-8;rotation=0;
+        // Precarga (solo imágenes; el audio no bloquea)
+        const assets = [playerImg, ...cloudImgs];
+        let loaded = 0;
+        assets.forEach(asset => { asset.onload = checkLoaded; });
+        function checkLoaded(){
+          loaded++;
+          if (loaded >= assets.length){
+            loadingScreen.style.display="none";
+            menu.style.display="flex";
           }
-          if(c.y>GAME_HEIGHT+60){clouds.splice(i,1);i--;}
         }
 
-        ctx.save();ctx.translate(player.x+player.w/2,player.y+player.h/2);ctx.rotate(rotation);
-        ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
+        // Utilidades
+        function resetPlayer(){ rotation=0; return { x:GAME_WIDTH/2-28, y:GAME_HEIGHT-120, w:56, h:56, speed:basePlayerSpeed }; }
+        function newCloud(){
+          const img = cloudImgs[Math.floor(Math.random()*cloudImgs.length)];
+          const size = 70 + Math.random()*50;
+          return { x:Math.random()*(GAME_WIDTH-size), y:-size, w:size, h:size, speed:1+speedFactor, img };
+        }
+        function buildStars(){
+          stars = [];
+          for (let i=0;i<120;i++){
+            stars.push({
+              x:Math.random()*GAME_WIDTH, y:Math.random()*GAME_HEIGHT,
+              r:Math.random()*2, color:Math.random()>0.5?"yellow":"black",
+              speed:0.2+Math.random()*0.8
+            });
+          }
+        }
 
-        if(!falling){score+=dt/1000;}
-        ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);
+        function endGame(){
+          running=false;
+          try { bgMusic.pause(); } catch(e){}
+          gameOverScreen.style.display="flex";
+          finalScoreDisplay.textContent = "Score: " + Math.floor(score);
+          let best = Number(localStorage.getItem("bestScore")||0);
+          if (score>best){ localStorage.setItem("bestScore", Math.floor(score)); best=score; }
+          bestScoreDisplay.textContent = best;
+        }
 
-        (window.requestAnimationFrame||function(cb){return setTimeout(()=>cb(performance.now()),16)})(loop);
-      }
+        function startGame(){
+          player = resetPlayer();
+          clouds = [];
+          buildStars();
+          score = 0; spawnTimer = 0; speedFactor = 1.5;
+          spawnEvery = 1500; falling = false; rotation = 0;
+          menu.style.display = "none";
+          gameOverScreen.style.display = "none";
+          running = true;
+          lastFrame = performance.now();
+          // asegurar foco para teclado
+          try { window.focus(); } catch(e){}
+          // intentar música (no bloqueante)
+          try { bgMusic.currentTime=0; bgMusic.play().catch(()=>{}); } catch(e){}
+          // arrancar loop de forma segura
+          (window.requestAnimationFrame || function(cb){ return setTimeout(()=>cb(performance.now()),16); })
+          (t => loop(t || performance.now()));
+        }
+
+        // Controles de teclado
+        const keys = Object.create(null);
+        window.addEventListener("keydown", e => {
+          if (e.code === "Space"){
+            if (menu.style.display!=="none" || gameOverScreen.style.display!=="none") startGame();
+            e.preventDefault(); return;
+          }
+          keys[e.key.toLowerCase()] = true;
+        });
+        window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+        playBtn.addEventListener("click", startGame);
+        againBtn.addEventListener("click", startGame);
+
+        // Bucle principal
+        function loop(now){
+          if (!running) return;
+          if (!now) now = performance.now();
+          const dt = Math.min(50, now - lastFrame); // cap para estabilidad
+          lastFrame = now;
+
+          ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+
+          // estrellas
+          for (const s of stars){
+            s.y += s.speed;
+            if (s.y > GAME_HEIGHT){ s.y = 0; s.x = Math.random()*GAME_WIDTH; }
+            ctx.fillStyle = s.color;
+            ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+          }
+
+          if (!falling){
+            if (keys["a"] || keys["arrowleft"])  player.x -= player.speed;
+            if (keys["d"] || keys["arrowright"]) player.x += player.speed;
+            if (keys["w"] || keys["arrowup"])    player.y -= player.speed;
+            if (keys["s"] || keys["arrowdown"])  player.y += player.speed;
+            player.x = Math.max(0, Math.min(GAME_WIDTH - player.w, player.x));
+            player.y = Math.max(0, Math.min(GAME_HEIGHT - player.h, player.y));
+          } else {
+            fallVelocity += 0.5; player.y += fallVelocity; rotation += 0.12;
+            if (player.y > GAME_HEIGHT + 40){ endGame(); return; }
+          }
+
+          // nubes
+          spawnTimer += dt;
+          while (spawnTimer >= spawnEvery){
+            spawnTimer -= spawnEvery; clouds.push(newCloud());
+          }
+
+          const pRect = { x:player.x, y:player.y, w:player.w, h:player.h };
+          for (let i=0; i<clouds.length; i++){
+            const c = clouds[i];
+            c.y += c.speed;
+            ctx.drawImage(c.img, c.x, c.y, c.w, c.h);
+
+            // colisión
+            if (!falling && !(pRect.x+pRect.w < c.x || pRect.x > c.x+c.w || pRect.y+pRect.h < c.y || pRect.y > c.y+c.h)){
+              falling = true; fallVelocity = -8; rotation = 0;
+            }
+            if (c.y > GAME_HEIGHT + 60){ clouds.splice(i,1); i--; }
+          }
+
+          // gato
+          ctx.save();
+          ctx.translate(player.x + player.w/2, player.y + player.h/2);
+          ctx.rotate(rotation);
+          ctx.drawImage(playerImg, -player.w/2, -player.h/2, player.w, player.h);
+          ctx.restore();
+
+          if (!falling) score += dt/1000;
+          ctx.fillStyle = "yellow";
+          ctx.font = "20px Fredoka One, system-ui, sans-serif";
+          ctx.fillText("Score: " + Math.floor(score), 10, 30);
+
+          (window.requestAnimationFrame || function(cb){ return setTimeout(()=>cb(performance.now()),16); })(loop);
+        }
+      })();
     })();
-  }
   </script>
 </body>
 </html>
+```
