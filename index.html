@@ -16,6 +16,7 @@
     }
     canvas { display:block; width:100%; height:100%; z-index:1; }
     #menu {
+      display:none;
       position:absolute; inset:0; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;
       padding:0 20px 60px 20px; z-index:10; background:url("PRINCIPAL (2).png") no-repeat center/cover; pointer-events:auto;
     }
@@ -86,6 +87,41 @@
     const bestScoreDisplay=document.getElementById("bestScore"),finalScoreDisplay=document.getElementById("finalScore");
     const bgMusic=document.getElementById("bgMusic");
     const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
+    const loadingScreen=document.getElementById("loadingScreen");
+
+    // Lista de recursos a precargar
+    const resources=[playerImg,...cloudImgs,bgMusic];
+    let loaded=0;
+
+    function checkLoaded(){
+      loaded++;
+      if(loaded>=resources.length){
+        showMenu();
+      }
+    }
+
+    function showMenu(){
+      loadingScreen.style.display="none";
+      menu.style.display="flex";
+    }
+
+    // Eventos de carga de imágenes y audio
+    resources.forEach(r=>{
+      if(r.tagName==="AUDIO"){
+        r.addEventListener("canplaythrough",checkLoaded,{once:true});
+      } else {
+        r.addEventListener("load",checkLoaded,{once:true});
+        r.addEventListener("error",checkLoaded,{once:true}); // si falla igual sigue
+      }
+    });
+
+    // Fallback: si no carga en 5s, forzar mostrar menú
+    setTimeout(()=>{
+      if(loadingScreen.style.display!=="none"){
+        showMenu();
+      }
+    },5000);
+
     const loadingScreen=document.getElementById("loadingScreen");
 
     // Lista de recursos a precargar
