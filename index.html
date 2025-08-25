@@ -5,25 +5,40 @@
   <title>Blessed Flight</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
+    :root{--accent:yellow;--bg:black;}
+    *{box-sizing:border-box;}
     body {
       margin:0; padding:0; display:flex; justify-content:center; align-items:center;
-      height:100vh; background:black; font-family:'Fredoka One',system-ui,sans-serif; overflow:hidden;
+      height:100vh; background:var(--bg); font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow:hidden;
     }
     #gameContainer {
       position:relative; width:400px; height:700px; max-width:100vw; max-height:100vh;
-      overflow:hidden; border:4px solid yellow; border-radius:20px; box-shadow:0 0 20px yellow;
+      overflow:hidden; border:4px solid var(--accent); border-radius:20px; box-shadow:0 0 20px var(--accent);
       background:#87ceeb; touch-action:none;
     }
     canvas { display:block; width:100%; height:100%; z-index:1; }
+    /* ⏳ Loading overlay SIEMPRE visible de inicio */
+    #loadingScreen {
+      position:absolute; inset:0; background:var(--bg); color:var(--accent);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:16px; font-size:1.4rem; z-index:100;
+    }
+    #progressWrap {
+      width:70%; height:14px; background:#222; border:2px solid var(--accent); border-radius:999px; overflow:hidden;
+      box-shadow:0 0 10px var(--accent);
+    }
+    #progressBar { height:100%; width:0%; background:var(--accent); transition:width .2s ease; }
+    #loadingHint{font-size:.9rem; color:#ddd; opacity:.9; text-align:center; padding:0 12px;}
+    /* Menú oculto por defecto y sin fondo hasta mostrarlo (evita descarga pesada) */
     #menu {
-      display:none;
-      position:absolute; inset:0; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;
-      padding:0 20px 60px 20px; z-index:10; background:url("PRINCIPAL (2).png") no-repeat center/cover; pointer-events:auto;
+      position:absolute; inset:0; display:none; flex-direction:column; align-items:flex-end; justify-content:flex-end;
+      padding:0 20px 60px 20px; z-index:10; pointer-events:auto; background:#000; background-size:cover; background-position:center;
     }
     .btn {
-      font-size:2em; color:yellow; background:black; border:4px solid yellow;
+      font-size:2em; color:var(--accent); background:black; border:4px solid var(--accent);
       padding:12px 28px; border-radius:20px; cursor:pointer; text-shadow:3px 3px 0 #000;
-      margin-top:20px; box-shadow:0 0 15px yellow; transition:transform 0.2s ease;
+      margin-top:20px; box-shadow:0 0 15px var(--accent); transition:transform 0.2s ease;
     }
     .btn:hover { transform:scale(1.06); }
     .best { color:white; font-size:1.1em; text-shadow:2px 2px 0 #000; margin-top:10px; align-self:center; }
@@ -45,38 +60,39 @@
       margin-left:-30px; margin-top:-30px; border-radius:50%;
       background:rgba(255,255,255,0.4); border:2px solid rgba(255,255,255,0.5);
     }
-  #loadingScreen {
-      position:absolute; inset:0; background:black; color:yellow;
-      display:flex; align-items:center; justify-content:center;
-      font-size:2em; z-index:50;
-    }
-    </style>
+  </style>
 </head>
 <body>
   <div id="gameContainer">
-    <!-- 🔄 Pantalla de carga -->
-    <div id="loadingScreen">
-      <h1>Cargando...</h1>
+    <!-- ⏳ Pantalla de carga -->
+    <div id="loadingScreen" aria-live="polite">
+      <div> Cargando…</div>
+      <div id="progressWrap"><div id="progressBar"></div></div>
+      <div id="loadingPercent">0%</div>
+      <div id="loadingHint">Si tarda en GitHub Pages, es normal la primera vez. Estamos preparando los recursos…</div>
     </div>
-    <div id="menu">
+
+    <!-- Menú (fondo se inyecta después para evitar bloquear el primer render) -->
+    <div id="menu" data-bg-src="PRINCIPAL (2).png">
       <button id="playBtn" class="btn">PLAY</button>
       <div class="best">Best Score: <span id="bestScore">0</span></div>
     </div>
+
     <div id="gameOverScreen">
       <img src="demonio.png" alt="Demonio sombrío" />
       <h1>CURSED</h1>
       <div id="finalScore">Score: 0</div>
       <button id="againBtn" class="btn">FLIGHT AGAIN</button>
     </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <!-- 🎮 Joystick Digital -->
-    <div id="joystick">
-      <div id="joystickKnob"></div>
-    </div>
+    <div id="joystick"><div id="joystickKnob"></div></div>
   </div>
 
-  <audio id="bgMusic" src="musica_fondo.mp3" loop preload="auto" playsinline></audio>
+  <!-- ⚠️ No bloqueamos la primera pintura con audio pesado -->
+  <audio id="bgMusic" src="musica_fondo.mp3" loop preload="metadata" playsinline></audio>
 
   <script>
   (() => {
@@ -88,63 +104,8 @@
     const bgMusic=document.getElementById("bgMusic");
     const joystick=document.getElementById("joystick"),joystickKnob=document.getElementById("joystickKnob");
     const loadingScreen=document.getElementById("loadingScreen");
-
-    // Lista de recursos a precargar
-    const resources=[playerImg,...cloudImgs,bgMusic];
-    let loaded=0;
-
-    function checkLoaded(){
-      loaded++;
-      if(loaded>=resources.length){
-        showMenu();
-      }
-    }
-
-    function showMenu(){
-      loadingScreen.style.display="none";
-      menu.style.display="flex";
-    }
-
-    // Eventos de carga de imágenes y audio
-    resources.forEach(r=>{
-      if(r.tagName==="AUDIO"){
-        r.addEventListener("canplaythrough",checkLoaded,{once:true});
-      } else {
-        r.addEventListener("load",checkLoaded,{once:true});
-        r.addEventListener("error",checkLoaded,{once:true}); // si falla igual sigue
-      }
-    });
-
-    // Fallback: si no carga en 5s, forzar mostrar menú
-    setTimeout(()=>{
-      if(loadingScreen.style.display!=="none"){
-        showMenu();
-      }
-    },5000);
-
-    const loadingScreen=document.getElementById("loadingScreen");
-
-    // Lista de recursos a precargar
-    const resources=[playerImg,...cloudImgs,bgMusic];
-    let loaded=0;
-
-    function checkLoaded(){
-      loaded++;
-      if(loaded>=resources.length){
-        loadingScreen.style.display="none";
-        menu.style.display="flex"; // ahora sí mostramos el menú
-      }
-    }
-
-    // Eventos de carga de imágenes y audio
-    resources.forEach(r=>{
-      if(r.tagName==="AUDIO"){
-        r.addEventListener("canplaythrough",checkLoaded,{once:true});
-      } else {
-        r.addEventListener("load",checkLoaded,{once:true});
-      }
-    });
-
+    const progressBar=document.getElementById("progressBar");
+    const loadingPercent=document.getElementById("loadingPercent");
 
     function resizeCanvas(){
       const dpr=window.devicePixelRatio||1;
@@ -158,8 +119,10 @@
     let spawnTimer=0,spawnEvery=1500,lastFrame=0,speedFactor=1.5;
     let milestoneMsg=null,milestoneColor="yellow",milestoneStart=0,reached=new Set();
 
-    const playerImg=new Image();playerImg.src="gato.png";
-    const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(s=>{let i=new Image();i.src=s;return i;});
+    // 📦 Recursos (sin fondo del menú ni audio para no bloquear)
+    const playerImg=new Image();playerImg.decoding="async";playerImg.src="gato.png";
+    const cloudImgs=["nube_grande.png","nube_pequeña.png","nube_negra.png","nube_negra_pequeña.png"].map(s=>{let i=new Image();i.decoding="async";i.src=s;return i;});
+    const demonImg=new Image();demonImg.decoding="async";demonImg.src="demonio.png"; // garantiza carga de pantalla game over
     const milestones=[
       {at:20,label:"DEVOTED",color:"gray"},
       {at:40,label:"ENLIGHTENED",color:"orange"},
@@ -188,7 +151,7 @@
       if(!milestoneMsg)return;
       const elapsed=now-milestoneStart;
       if(elapsed>1500){milestoneMsg=null;return;}
-      ctx.save();ctx.fillStyle=milestoneColor;ctx.font="40px Fredoka One";
+      ctx.save();ctx.fillStyle=milestoneColor;ctx.font="40px system-ui, sans-serif";
       ctx.textAlign="center";ctx.fillText(milestoneMsg,GAME_WIDTH/2,GAME_HEIGHT/2);ctx.restore();
     }
 
@@ -251,13 +214,11 @@
       for(const s of stars){s.y+=s.speed;if(s.y>GAME_HEIGHT){s.y=0;s.x=Math.random()*GAME_WIDTH;}ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
 
       if(!falling){
-        // 🔥 Movimiento con teclado
         if(keys["a"]||keys["arrowleft"])player.x-=player.speed;
         if(keys["d"]||keys["arrowright"])player.x+=player.speed;
         if(keys["w"]||keys["arrowup"])player.y-=player.speed;
         if(keys["s"]||keys["arrowdown"])player.y+=player.speed;
 
-        // 🔥 Movimiento con joystick
         player.x+=joyPos.x*player.speed*3;
         player.y+=joyPos.y*player.speed*3;
 
@@ -280,11 +241,44 @@
       ctx.drawImage(playerImg,-player.w/2,-player.h/2,player.w,player.h);ctx.restore();
 
       if(!falling){score+=dt/1000;maybeMilestone();}
-      ctx.fillStyle="yellow";ctx.font="20px Fredoka One";ctx.fillText("Score: "+Math.floor(score),10,30);
+      ctx.fillStyle="yellow";ctx.font="20px system-ui, sans-serif";ctx.fillText("Score: "+Math.floor(score),10,30);
       drawMilestone(now);
 
       requestAnimationFrame(loop);
     }
+
+    // 🚀 PRECARGA con progreso (solo imágenes del juego, no audio ni fondo del menú)
+    const resources=[playerImg,...cloudImgs,demonImg];
+    let loaded=0;
+    function updateProgress(){
+      loaded++;
+      const pct=Math.round((loaded/resources.length)*100);
+      progressBar.style.width=pct+"%";
+      loadingPercent.textContent=pct+"%";
+      if(loaded>=resources.length){showMenu();}
+    }
+    // Cuenta tanto LOAD como ERROR para no quedarse colgado si falla alguien
+    resources.forEach(r=>{
+      r.addEventListener("load",updateProgress,{once:true});
+      r.addEventListener("error",updateProgress,{once:true});
+    });
+
+    function showMenu(){
+      // Inyecta el fondo del menú recién ahora (para no bloquear primer render)
+      const bgSrc=menu.dataset.bgSrc;
+      if(bgSrc){ menu.style.backgroundImage=`url("${bgSrc}")`; }
+      loadingScreen.style.display="none";
+      menu.style.display="flex";
+      // Mostrar récord
+      bestScoreDisplay.textContent=Number(localStorage.getItem("bestScore")||0);
+    }
+
+    // Fallback duro: si algo tarda demasiado, no bloquees al usuario
+    setTimeout(()=>{
+      if(loadingScreen.style.display!=="none"){
+        showMenu();
+      }
+    },7000);
   })();
   </script>
 </body>
